@@ -1,0 +1,1266 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, query, where, getDoc, serverTimestamp, onSnapshot, orderBy,deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBfI_BBvq61f43ZaFYtZOYvcFZB39jsNt0",
+  authDomain: "domino-profesional.firebaseapp.com",
+  projectId: "domino-profesional",
+  storageBucket: "domino-profesional.firebasestorage.app",
+  messagingSenderId: "124987260145",
+  appId: "1:124987260145:web:757f6e0d6093c16aacfd50",
+  measurementId: "G-NPFGT0HZJP"
+};
+
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+const auth = getAuth(app);
+
+const modal = document.getElementById('modal-cliente');
+const btnNuevoCliente = document.getElementById('btn-nuevo-cliente');
+const btnCloseModal = document.getElementById('close-modal');
+const formAlta = document.getElementById('form-alta-cliente');
+
+const mapaEstados = {
+    "Pendiente de Procesar": ["En Revisión", "Solicitar Información"],
+    "Pendiente": ["En Revisión", "Solicitar Información"],
+    "En Revisión": ["Solicitar Información", "En Proceso"],
+    "Solicitar Información": ["En Revisión", "En Proceso", "Procesado/Liquidado"],
+    "En Proceso": ["Procesado/Liquidado", "Proceso Completo/Finalizado"],
+    "Procesado/Liquidado": ["Proceso Completo/Finalizado"],
+    "Proceso Completo/Finalizado": []
+};
+
+const colorEstado = {
+    "Pendiente de Procesar": "border-rojo",
+    "Pendiente": "border-rojo",
+    "En Revisión": "border-rojo",
+    "Solicitar Información": "border-ambar",
+    "En Proceso": "border-ambar",
+    "Procesado/Liquidado": "border-ambar",
+    "Proceso Completo/Finalizado": "border-verde"
+};
+
+btnNuevoCliente.addEventListener('click', () => modal.style.display = 'flex');
+btnCloseModal.addEventListener('click', () => modal.style.display = 'none');
+
+const hamburger = document.getElementById('hamburger');
+const menu = document.getElementById('menu');
+hamburger.addEventListener('click', () => menu.classList.toggle('show'));
+
+
+// =========================================
+// LOGICA DE DATOS: CLIENTES (FIRESTORE)
+// =========================================
+
+// 1. Cargar Clientes Activos
+async function cargarClientes(filtro = "activo") {
+    const listaClientes = document.getElementById('client-list');
+    listaClientes.innerHTML = "";
+    const tituloCartera = document.querySelector('.client-board h2');
+const textoVacio = filtro === 'inactivo' ? 'No hay clientes inactivos registrados.' : 'No hay clientes activos registrados.';
+tituloCartera.innerText = filtro === 'inactivo' ? 'Cartera de Clientes Inactivos' : 'Cartera de Clientes Activos';
+
+    try {
+        let q;
+
+if (filtro === "todas") {
+    q = query(collection(db, "clients"));
+} else {
+    q = query(collection(db, "clients"), where("estado", "==", filtro));
+}
+
+const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            listaClientes.innerHTML = `<p style='color: var(--text-muted);'>${textoVacio}</p>`;
+            return;
+        }
+
+        querySnapshot.forEach((documento) => {
+            const cliente = documento.data();
+            const idDoc = documento.id;
+            cacheClientes[idDoc] = cliente.nombre_empresa;
+
+            const clienteHTML = `
+                <div class="client-card" id="card-${idDoc}">
+                    <div onclick="abrirExpediente('${idDoc}', '${cliente.nombre_empresa}')" style="cursor: pointer; flex-grow: 1;">
+                        <h4 style="pointer-events: none;">${cliente.nombre_empresa}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">CUIT: ${cliente.cuit}</p>
+                    </div>
+                    <button class="${cliente.estado === 'activo' ? 'btn-baja' : 'btn-activar'}" 
+        data-id="${idDoc}" 
+        data-estado="${cliente.estado}">
+    ${cliente.estado === 'activo' ? 'Desactivar' : 'Activar'}
+</button>
+                </div>
+            `;
+            listaClientes.innerHTML += clienteHTML;
+        });
+
+        document.querySelectorAll('.btn-baja, .btn-activar').forEach(button => {
+    button.addEventListener('click', async (e) => {
+        const idCliente = e.target.getAttribute('data-id');
+        const estadoActual = e.target.getAttribute('data-estado');
+
+        if (estadoActual === 'activo') {
+            await desactivarCliente(idCliente);
+        } else {
+            await reactivarCliente(idCliente);
+        }
+    });
+});
+
+    } catch (error) {
+        console.error("Error al cargar clientes:", error);
+    }
+}
+
+// 2. Alta de Cliente
+formAlta.addEventListener('submit', async (e) => {
+    e.preventDefault(); // Evita que la página se recargue
+
+    const nombre = document.getElementById('client-name').value;
+    const cuit = document.getElementById('client-cuit').value;
+
+    try {
+        await addDoc(collection(db, "clients"), {
+            nombre_empresa: nombre,
+            cuit: cuit,
+            estado: "activo",
+            fecha_creacion: new Date().toISOString(),
+            usuario_id: document.getElementById('client-usuario-id').value
+        });
+
+        formAlta.reset(); // Limpiamos los campos
+        modal.style.display = 'none'; // Cerramos el formulario
+        cargarClientes(); // Recargamos la lista en pantalla
+
+    } catch (error) {
+        alert("Error al guardar el cliente: " + error.message);
+    }
+});
+
+// 3. Baja Lógica de Cliente (Cambio de estado)
+async function desactivarCliente(id) {
+    if (confirm("¿Estás seguro de que deseas desactivar este cliente?")) {
+        try {
+            const clienteRef = doc(db, "clients", id);
+            await updateDoc(clienteRef, {
+                estado: "inactivo"
+            });
+            
+            
+            cargarClientes(selectorContador.value);
+        } catch (error) {
+            console.error("Error al desactivar:", error);
+        }
+    }
+}
+
+async function reactivarCliente(id) {
+    if (confirm("¿Confirma que el cliente vuelve al estudio?")) {
+        try {
+            const clienteRef = doc(db, "clients", id);
+            await updateDoc(clienteRef, {
+                estado: "activo"
+            });
+
+            cargarClientes(selectorContador.value);
+        } catch (error) {
+            console.error("Error al Reactivar:", error);
+        }
+    }
+}
+
+// =========================================
+// MÓDULO: EXPEDIENTE Y TAREAS RELACIONALES
+// =========================================
+
+// Variables de la interfaz de Expediente
+const vistaDashboard = document.getElementById('vista-dashboard');
+const vistaExpediente = document.getElementById('vista-expediente');
+const btnVolver = document.getElementById('btn-volver');
+const tituloExpediente = document.getElementById('titulo-expediente');
+console.log("btnVolver:", btnVolver);
+
+// Variables del Modal de Tareas
+const modalTarea = document.getElementById('modal-tarea');
+const btnNuevaTarea = document.getElementById('btn-nueva-tarea');
+const btnCloseModalTarea = document.getElementById('close-modal-tarea');
+const formAltaTarea = document.getElementById('form-alta-tarea');
+
+let cacheClientes = {};
+let idClienteActivo = null; 
+
+btnVolver.addEventListener('click', () => {
+    vistaExpediente.style.display = 'none';
+    vistaDashboard.style.display = 'block';
+    idClienteActivo = null;
+    console.log("Volviendo al dashboard, cargando prioridades...");
+    cargarPrioridades(); 
+});
+
+btnNuevaTarea.addEventListener('click', () => modalTarea.style.display = 'flex');
+btnCloseModalTarea.addEventListener('click', () => modalTarea.style.display = 'none');
+
+
+window.abrirExpediente = function(id, nombre) {
+    idClienteActivo = id; 
+    tituloExpediente.innerText = nombre; 
+    
+    // Transición visual
+    vistaDashboard.style.display = 'none';
+    vistaExpediente.style.display = 'block';
+    
+    // Disparamos la búsqueda de tareas de ESTE cliente
+    cargarTareasDelCliente(id);
+};
+
+// 4. Guardar una Tarea en Firestore (Atada al Cliente)
+formAltaTarea.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (!idClienteActivo) return; // Seguridad: no guardar si no hay cliente
+
+    const nombreTarea = document.getElementById('task-name').value;
+    const fecha = document.getElementById('task-date').value;
+    const responsable = document.getElementById('task-responsable').value;
+
+    try {
+        await addDoc(collection(db, "tasks"), {
+            cliente_id: idClienteActivo,
+            titulo: nombreTarea,
+            vencimiento: fecha,
+            responsable: responsable,
+            estado: "Pendiente de Procesar"
+        });
+
+        formAltaTarea.reset();
+        modalTarea.style.display = 'none';
+        cargarTareasDelCliente(idClienteActivo); // Recargamos la lista
+
+    } catch (error) {
+        alert("Error al guardar tarea: " + error.message);
+    }
+});
+
+// 5. Traer solo las tareas de este cliente
+async function cargarTareasDelCliente(id) {
+    const listaTareas = document.getElementById('lista-tareas-cliente');
+    listaTareas.innerHTML = "";
+
+    try {
+        // Pedimos a Firestore: "Trae las tareas DONDE el cliente_id sea igual a idClienteActivo"
+        const q = query(collection(db, "tasks"), where("cliente_id", "==", id));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            listaTareas.innerHTML = "<p style='color: var(--text-muted);'>No hay procesos activos para este cliente.</p>";
+            return;
+        }
+
+        querySnapshot.forEach((taskDoc) => {
+            const tarea = taskDoc.data();
+            const idTarea = taskDoc.id;
+            listaTareas.innerHTML += `
+                <div class="task-item ${colorEstado[tarea.estado] || 'border-ambar'}">
+                    <div class="task-info">
+                        <h4>${tarea.titulo}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">
+                            Asignado a: <strong>${tarea.responsable}</strong> | Vence: ${tarea.vencimiento} | Estado: ${tarea.estado}
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+    <button class="btn-action" onclick="abrirModalDocsTarea('${idTarea}', '${tarea.titulo}')">
+        Documentos
+    </button>
+    <button class="btn-secundario" onclick="abrirModalEstado('${idTarea}', '${tarea.estado}', '${tarea.titulo}')">
+        ${tarea.estado}
+    </button>
+</div>
+            `;
+        });
+    } catch (error) {
+        console.error("Error cargando tareas:", error);
+    }
+}
+
+// =========================================
+// MÓDULO: BUZÓN DOCUMENTAL
+// =========================================
+
+const vistaBuzon = document.getElementById('vista-buzon');
+const btnVolverBuzon = document.getElementById('btn-volver-buzon');
+const formSubirDoc = document.getElementById('form-subir-doc');
+
+async function cargarTareasEnSelectores(idCliente) {
+    try {
+        const q = query(
+            collection(db, "tasks"),
+            where("cliente_id", "==", idCliente)
+        );
+        const querySnapshot = await getDocs(q);
+        
+        const selectores = document.querySelectorAll('.selector-tarea');
+        selectores.forEach(selector => {
+            selector.innerHTML = '<option value="">Asignar a tarea...</option>';
+            querySnapshot.forEach((taskDoc) => {
+                const tarea = taskDoc.data();
+                selector.innerHTML += `<option value="${taskDoc.id}">${tarea.titulo} — ${tarea.responsable || 'Sin asignar'}</option>`;
+            });
+        });
+    } catch (error) {
+        console.error("Error cargando tareas en selectores:", error);
+    }
+}
+
+// 1. Navegación: Ir de Expediente a Buzón
+window.abrirBuzon = function() {
+    if (!idClienteActivo) return; // Si no hay cliente seleccionado, no hace nada
+    document.getElementById('filtro-fecha').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
+document.getElementById('filtro-area').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
+document.getElementById('filtro-estado').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
+document.getElementById('filtro-asignacion').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
+    
+    // Cambiamos el título
+    document.getElementById('titulo-buzon').innerText = "Buzón Documental";
+    
+    // Transición visual
+    vistaExpediente.style.display = 'none';
+    vistaBuzon.style.display = 'block';
+    
+    // Cargamos los documentos previos
+    cargarDocumentosDelCliente(idClienteActivo);
+    cargarTareasEnSelectores(idClienteActivo);
+};
+
+// 2. Navegación: Volver de Buzón a Expediente
+btnVolverBuzon.addEventListener('click', () => {
+    vistaBuzon.style.display = 'none';
+    vistaExpediente.style.display = 'block';
+});
+
+// 3. Guardar el registro del documento
+formSubirDoc.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!idClienteActivo) return;
+
+    const categoria = document.getElementById('doc-category').value;
+    
+    // Obtenemos el nombre real del archivo que el usuario seleccionó
+    const archivoInput = document.getElementById('doc-file');
+    const nombreArchivo = archivoInput.files[0].name; 
+
+    // Generamos la fecha actual en formato legible
+    const fechaHoy = new Date().toLocaleDateString('es-ES');
+
+    try {
+        await addDoc(collection(db, "documents"), {
+            cliente_id: idClienteActivo,
+            categoria: categoria,
+            nombre_archivo: nombreArchivo,
+            fecha_subida: fechaHoy,
+            estado: "Pendiente de Procesar" // Ideal para que el Asistente sepa qué es nuevo
+        });
+
+        formSubirDoc.reset();
+        cargarDocumentosDelCliente(idClienteActivo); // Recargamos la lista
+
+    } catch (error) {
+        alert("Error al registrar el documento: " + error.message);
+    }
+});
+
+// 4. Traer el historial de documentos
+async function cargarDocumentosDelCliente(id) {
+    const listaDocs = document.getElementById('lista-documentos');
+    listaDocs.innerHTML = "";
+    
+    const filtroFecha = document.getElementById('filtro-fecha').value;
+    const filtroArea = document.getElementById('filtro-area').value;
+    const filtroEstado = document.getElementById('filtro-estado').value;
+    const filtroAsignacion = document.getElementById('filtro-asignacion').value;
+    
+    try {
+        const q = query(collection(db, "documents"), where("cliente_id", "==", id));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+            listaDocs.innerHTML = "<p style='color: var(--text-muted);'>No hay documentos en el buzón.</p>";
+            return;
+        }
+
+        let docs = [];
+        querySnapshot.forEach((docSnap) => {
+            docs.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        // Filtrar por área
+        if (filtroArea !== 'todas') {
+            docs = docs.filter(d => d.categoria === filtroArea);
+        }
+
+        // Filtrar por estado
+        if (filtroEstado !== 'todos') {
+            docs = docs.filter(d => d.estado === filtroEstado);
+        }
+
+        // Filtrar por asignación
+        if (filtroAsignacion === 'asignado') {
+            docs = docs.filter(d => d.tarea_id);
+        } else if (filtroAsignacion === 'sin_asignar') {
+            docs = docs.filter(d => !d.tarea_id);
+        }
+
+        // Ordenar por fecha
+        docs.sort((a, b) => {
+            const fechaA = new Date(a.fecha_subida.split('/').reverse().join('-'));
+            const fechaB = new Date(b.fecha_subida.split('/').reverse().join('-'));
+            return filtroFecha === 'reciente' ? fechaB - fechaA : fechaA - fechaB;
+        });
+
+        if (docs.length === 0) {
+            listaDocs.innerHTML = "<p style='color: var(--text-muted);'>No hay documentos con los filtros seleccionados.</p>";
+            return;
+        }
+
+        docs.forEach((documento) => {
+            listaDocs.innerHTML += `
+                <div class="doc-item">
+                    <div>
+                        <h4>${documento.nombre_archivo}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">
+                            Área: <strong>${documento.categoria}</strong> | Fecha: ${documento.fecha_subida}
+                        </p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                        <span style="font-size: 0.85rem; padding: 5px 10px; background: var(--bg-panel); border-radius: 4px; color: var(--ambar-espera);">
+                            ${documento.estado}
+                        </span>
+                        ${!documento.tarea_id ? `
+                        <select class="mini-selector selector-tarea" data-doc-id="${documento.id}" style="font-size: 0.8rem;">
+                            <option value="">Asignar a tarea...</option>
+                        </select>
+                        <button class="btn-action btn-asignar-tarea" data-doc-id="${documento.id}" style="font-size: 0.8rem;">
+                            Asignar
+                        </button>
+                        ` : `<span style="font-size: 0.75rem; color: var(--verde-ok);">✓ Asignado</span>`}
+                    </div>
+                </div>
+            `;
+        });
+
+        cargarTareasEnSelectores(idClienteActivo);
+
+    } catch (error) {
+        console.error("Error cargando documentos:", error);
+    }
+}
+// Función para cambiar de empresa activa
+function cambiarEmpresaActiva(idEmpresa) {
+    localStorage.setItem('empresa_activa', idEmpresa);
+    // Disparamos un evento para que las otras partes de la app se refresquen
+    window.dispatchEvent(new Event('empresaCambiada'));
+    
+    // Si estamos en el dashboard, recargamos la lista
+    if(typeof cargarClientes === 'function') cargarClientes();
+}
+
+// Escuchamos el cambio en toda la aplicación
+window.addEventListener('empresaCambiada', () => {
+    const id = localStorage.getItem('empresa_activa');
+    console.log("Nueva empresa seleccionada:", id);
+    // Aquí iría el filtro lógico que usaremos en el futuro
+});
+
+// Ejecución inicial al abrir la app
+const selectorContador = document.getElementById('selector-empresas-contador');
+
+selectorContador.addEventListener('change', () => {
+    cargarClientes(selectorContador.value);
+});
+
+// =========================================
+// MÓDULO: WORKFLOW DE ESTADOS
+// =========================================
+
+const modalEstado = document.getElementById('modal-estado');
+const closeModalEstado = document.getElementById('close-modal-estado');
+const opcionesEstado = document.getElementById('opciones-estado');
+const camposEnProceso = document.getElementById('campos-en-proceso');
+const btnConfirmarEstado = document.getElementById('btn-confirmar-estado');
+
+let idTareaActiva = null;
+let estadoDestino = null;
+
+closeModalEstado.addEventListener('click', () => modalEstado.style.display = 'none');
+
+window.abrirModalEstado = function(id, estadoActual, tituloTarea) {
+    idTareaActiva = id;
+    estadoDestino = null;
+    
+    document.getElementById('titulo-tarea-modal').innerText = tituloTarea;
+    camposEnProceso.style.display = 'none';
+    btnConfirmarEstado.style.display = 'none';
+    
+    const siguientes = mapaEstados[estadoActual];
+    opcionesEstado.innerHTML = '';
+    
+    
+    siguientes.forEach(estado => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-secundario';
+        btn.innerText = estado;
+        btn.addEventListener('click', () => seleccionarEstado(estado));
+        opcionesEstado.appendChild(btn);
+    });
+    
+    modalEstado.style.display = 'flex';
+};
+
+function seleccionarEstado(estado){
+    estadoDestino = estado;
+    if (estado === "En Proceso") { 
+        camposEnProceso.style.display = "flex"; 
+    } 
+    else { 
+        camposEnProceso.style.display = "none"; 
+    }
+    btnConfirmarEstado.style.display = "block";
+}
+
+btnConfirmarEstado.addEventListener('click', async () => {
+    const responsable = document.getElementById('modal-responsable').value;
+    const vencimiento = document.getElementById('modal-vencimiento').value;
+    const tareaRef = doc(db, "tasks", idTareaActiva);
+    try {
+        await updateDoc(tareaRef, {
+            estado: estadoDestino,
+            responsable: responsable,
+            vencimiento: vencimiento
+        });
+        modalEstado.style.display = 'none';
+        idTareaActiva = null;
+        cargarTareasDelCliente(idClienteActivo);
+        actualizarKPIs();
+    } catch (error) {
+        console.error("Error al cambiar estado:", error);
+    }
+});
+
+async function cargarCacheClientes() {
+    const querySnapshot = await getDocs(collection(db, "clients"));
+    querySnapshot.forEach((documento) => {
+        cacheClientes[documento.id] = documento.data().nombre_empresa;
+    });
+}
+
+function aplicarPermisosPorRol(rol, nombreDisplay) {
+    console.log("Rol recibido:", rol, "Nombre:", nombreDisplay);
+    const btnNuevoCliente = document.getElementById('btn-nuevo-cliente');
+    const selectorFiltro = document.getElementById('selector-empresas-contador');
+    
+    if (rol === 'senior') {
+        // Acceso completo — no ocultamos nada
+        btnNuevoCliente.style.display = 'block';
+        selectorFiltro.style.display = 'block';
+        
+    } else if (rol === 'midsenior') {
+        // Puede crear clientes pero solo ve sus empresas
+        btnNuevoCliente.style.display = 'block';
+        selectorFiltro.style.display = 'block';
+        
+    } else if (rol === 'asistente') {
+        btnNuevoCliente.style.display = 'none';
+        selectorFiltro.style.display = 'none';
+        document.querySelector('.client-board').style.display = 'none';
+        document.querySelector('.kpi-grid').style.display = 'none';
+        document.getElementById('vista-mis-tareas').style.display = 'block';
+        cargarMisTareas(nombreDisplay);
+    }
+    
+    // Actualizar el nombre del rol en el topbar
+    const spanRol = document.querySelector('.user-profile span');
+    if (spanRol) {
+        spanRol.innerText = rol === 'senior' ? 'Contador Senior' : 
+                            rol === 'midsenior' ? 'Contador Mid-Senior' : 'Asistente';
+    }
+}
+
+async function iniciarApp() {
+    onAuthStateChanged(auth, async (usuario) => {
+        console.log("Auth state changed:", usuario);
+        if (!usuario) {
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        const q = query(collection(db, "users"), where("email", "==", usuario.email));
+const userSnap = await getDocs(q);
+
+if (userSnap.empty) {
+    alert("Usuario sin perfil asignado. Contacte al administrador.");
+    await signOut(auth);
+    window.location.href = 'login.html';
+    return;
+}
+
+const rolUsuario = userSnap.docs[0].data().rol_jerarquia;
+window.rolActual = rolUsuario;
+        
+        document.getElementById('main-content').style.display = 'block';
+        const nombreDisplay = userSnap.docs[0].data().nombre_display || '';
+        aplicarPermisosPorRol(rolUsuario, nombreDisplay);
+       if (rolUsuario !== 'asistente') {
+    await cargarClientes(selectorContador.value);
+    await actualizarKPIs();
+    await cargarPrioridades();
+} else {
+    await cargarCacheClientes();
+}
+
+window.nombreDisplay = userSnap.docs[0].data().nombre_display || '';
+iniciarBadgeChat();
+    });
+}
+
+// =========================================
+// MÓDULO: DOCUMENTOS PENDIENTES
+// =========================================
+
+const closeModalDocs = document.getElementById('close-modal-docs');
+closeModalDocs.addEventListener('click', () => 
+    document.getElementById('modal-docs-pendientes').style.display = 'none'
+);
+
+window.abrirModalDocsPendientes = async function() {
+    const listaDocs = document.getElementById('lista-docs-pendientes');
+    listaDocs.innerHTML = '<p style="color: var(--text-muted);">Cargando...</p>';
+    document.getElementById('modal-docs-pendientes').style.display = 'flex';
+
+try {
+    const q = query(
+        collection(db, "documents"), 
+        where("estado", "==", "Pendiente de Procesar")
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        listaDocs.innerHTML = '<p style="color: var(--text-muted);">No hay documentos pendientes.</p>';
+        return;
+    }
+listaDocs.innerHTML = '';
+
+for (const docSnap of querySnapshot.docs) {
+    const documento = docSnap.data();
+    const idDocumento = docSnap.id;
+
+    const clienteRef = doc(db, "clients", documento.cliente_id);
+    const clienteSnap = await getDoc(clienteRef);
+    const nombreEmpresa = clienteSnap.exists() ? clienteSnap.data().nombre_empresa : "Empresa desconocida";
+
+    listaDocs.innerHTML += `
+        <div class="doc-item">
+            <div>
+                <h4>${documento.nombre_archivo}</h4>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">
+                    Empresa: <strong>${nombreEmpresa}</strong> | 
+                    Área: ${documento.categoria} | 
+                    Fecha: ${documento.fecha_subida}
+                </p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+    <span style="font-size: 0.85rem; padding: 5px 10px; background: var(--bg-panel); border-radius: 4px; color: var(--ambar-espera);">
+        ${documento.estado}
+    </span>
+    <button class="btn-action" 
+        data-id="${idDocumento}"
+        data-url="${documento.url_descarga || ''}"
+        onclick="descargarDocumento('${idDocumento}', '${documento.url_descarga || ''}', '${nombreEmpresa}', '${documento.categoria}', '${documento.nombre_archivo}')">
+        Descargar
+    </button>
+</div>
+        </div>
+    `;
+}
+
+} catch (error) {
+    console.error("Error al traer documentos pendientes:", error);
+}
+}
+// =========================================
+// MÓDULO: PRIORIDADES DE LA SEMANA
+// =========================================
+window.cargarPrioridades = async function() {
+    const listaPrioridades = document.getElementById('lista-prioridades');
+    listaPrioridades.innerHTML = '';
+
+    try {
+        const hoy = new Date();
+        const fechaHoy = hoy.toISOString().split('T')[0];
+        
+        const limite = new Date();
+        limite.setDate(limite.getDate() + 4);
+        const fechaLimite = limite.toISOString().split('T')[0];
+
+        const q = query(
+            collection(db, "tasks"),
+            where("vencimiento", ">=", fechaHoy),
+            where("vencimiento", "<=", fechaLimite)
+        );
+
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            listaPrioridades.innerHTML = "<p style='color: var(--text-muted);'>No hay tareas urgentes esta semana.</p>";
+            return;
+        }
+
+        querySnapshot.forEach((taskDoc) => {
+            const tarea = taskDoc.data();
+            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
+            
+            listaPrioridades.innerHTML += `
+                <div class="task-item ${colorEstado[tarea.estado] || 'border-ambar'}">
+                    <div class="task-info">
+                        <h4>${tarea.titulo}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">
+                            <strong>${nombreEmpresa}</strong> | 
+                            Área: ${tarea.responsable} | 
+                            Vence: ${tarea.vencimiento}
+                        </p>
+                    </div>
+                    <button class="btn-action" onclick="abrirExpediente('${tarea.cliente_id}', '${nombreEmpresa}')">
+                        Ver Expediente
+                    </button>
+                </div>
+            `;
+        });
+
+    } catch (error) {
+        console.error("Error al cargar prioridades:", error);
+    }
+}
+
+window.descargarDocumento = async function(id, url, nombreEmpresa, categoria, nombreArchivo) {
+    try {
+        const nombreDescarga = `${nombreEmpresa}_${categoria}_${nombreArchivo}`;
+        const urlDescarga = url + '&response-content-disposition=attachment';
+window.open(urlDescarga, '_blank');
+        
+        const docRef = doc(db, "documents", id);
+        await updateDoc(docRef, {
+            estado: "En Revisión"
+        });
+        
+        abrirModalDocsPendientes();
+        actualizarKPIs();
+        
+    } catch (error) {
+        console.error("Error al descargar documento:", error);
+    }
+}
+
+const formEnviarCliente = document.getElementById('form-enviar-cliente'); formEnviarCliente.addEventListener('submit', async (e) => {  
+e.preventDefault();  
+
+const categoria = document.getElementById('entrega-categoria').value;  
+const archivoInput = document.getElementById('entrega-file'); 
+const archivo = archivoInput.files[0];  
+const nombreArchivo = archivo.name;  
+const fechaHoy = new Date().toLocaleDateString('es-ES'); 
+const enviado_por = "Contador" ; 
+
+try {  
+const btnSend = formEnviarCliente.querySelector('.btn-primary');  
+btnSend.innerText = "Enviando...";  
+btnSend.disabled = true;
+
+const storageRef = ref(storage, `documentos/${idClienteActivo}/${fechaHoy}/${nombreArchivo}`);  
+await uploadBytes(storageRef, archivo);  
+const downloadURL = await getDownloadURL(storageRef);  
+
+await addDoc(collection(db, "entregas"), {  
+cliente_id: idClienteActivo,  
+categoria: categoria,  
+nombre_archivo: nombreArchivo,  
+fecha_envio: fechaHoy,  
+url_descarga: downloadURL ,
+enviado_por:"Contador",
+fecha_timestamp: serverTimestamp()
+});  
+
+formEnviarCliente.reset();  
+alert("Documento enviado al cliente correctamente.");
+btnSend.innerText = "Enviar al Cliente";
+btnSend.disabled = false;
+
+} catch (error) {  
+alert("Hubo un error al enviar el documento.");  
+console.error(error);  
+}  
+});
+
+async function cargarKanban() {
+    const columnas = {
+        "Pendiente de Procesar": document.getElementById('cards-pendiente'),
+        "Pendiente": document.getElementById('cards-pendiente'),
+        "En Revisión": document.getElementById('cards-revision'),
+        "Solicitar Información": document.getElementById('cards-revision'),
+        "En Proceso": document.getElementById('cards-proceso'),
+        "Procesado/Liquidado": document.getElementById('cards-proceso'),
+        "Proceso Completo/Finalizado": document.getElementById('cards-finalizado')
+    };
+
+    Object.values(columnas).forEach(col => {
+        if (col) col.innerHTML = '';
+    });
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "tasks"));
+        
+        querySnapshot.forEach((taskDoc) => {
+            const tarea = taskDoc.data();
+            const columna = columnas[tarea.estado];
+            if (!columna) return;
+            
+            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
+            
+            columna.innerHTML += `
+                <div class="kanban-card" onclick="abrirExpediente('${tarea.cliente_id}', '${nombreEmpresa}')">
+                    <h4>${tarea.titulo}</h4>
+                    <p>${nombreEmpresa}</p>
+                    <p>Vence: ${tarea.vencimiento || 'Sin fecha'}</p>
+                </div>
+            `;
+        });
+
+        document.getElementById('kanban-ultima-actualizacion').innerText = 
+            `Actualizado: ${new Date().toLocaleTimeString('es-ES')}`;
+
+    } catch (error) {
+        console.error("Error al cargar kanban:", error);
+    }
+}
+
+window.navegarA = function(seccion) {
+    document.getElementById('vista-dashboard').style.display = 'none';
+    document.getElementById('vista-kanban').style.display = 'none';
+    
+    document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
+    
+    if (seccion === 'dashboard') {
+        document.getElementById('vista-dashboard').style.display = 'block';
+        document.getElementById('nav-dashboard').classList.add('active');
+    } else if (seccion === 'kanban') {
+        document.getElementById('vista-kanban').style.display = 'block';
+        document.getElementById('nav-kanban').classList.add('active');
+        cargarKanban();
+    }
+}
+window.cerrarSesion = async function() {
+    if (confirm("¿Estás seguro que querés cerrar sesión?")) {
+        await signOut(auth);
+        window.location.href = 'login.html';
+    }
+}
+
+// Autorefresh cada 15 minutos
+setInterval(() => {
+    actualizarKPIs();
+    cargarPrioridades();
+    console.log("Autorefresh ejecutado:", new Date().toLocaleTimeString('es-ES'));
+}, 10 * 60 * 1000);
+
+async function cargarMisTareas(nombreAsistente) {
+    const columnas = {
+        "Pendiente de Procesar": document.getElementById('mis-tareas-pendiente'),
+        "Pendiente": document.getElementById('mis-tareas-pendiente'),
+        "En Revisión": document.getElementById('mis-tareas-pendiente'),
+        "Solicitar Información": document.getElementById('mis-tareas-pendiente'),
+        "En Proceso": document.getElementById('mis-tareas-proceso'),
+        "Procesado/Liquidado": document.getElementById('mis-tareas-proceso'),
+        "Proceso Completo/Finalizado": document.getElementById('mis-tareas-finalizado')
+    };
+
+    Object.values(columnas).forEach(col => {
+        if (col) col.innerHTML = '';
+    });
+
+    try {
+        const q = query(
+            collection(db, "tasks"),
+            where("responsable", "==", nombreAsistente)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            document.getElementById('mis-tareas-pendiente').innerHTML = 
+                "<p style='color: var(--text-muted);'>No tenés tareas asignadas.</p>";
+            return;
+        }
+
+        querySnapshot.forEach((taskDoc) => {
+            const tarea = taskDoc.data();
+            const columna = columnas[tarea.estado];
+            if (!columna) return;
+            
+            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
+            
+            columna.innerHTML += `
+    <div class="kanban-card" onclick="abrirModalDocsTarea('${taskDoc.id}', '${tarea.titulo}')">
+        <h4>${tarea.titulo}</h4>
+        <p>${nombreEmpresa}</p>
+        <p>Vence: ${tarea.vencimiento || 'Sin fecha'}</p>
+    </div>
+`;
+        });
+
+        document.getElementById('mis-tareas-actualizacion').innerText = 
+            `Actualizado: ${new Date().toLocaleTimeString('es-ES')}`;
+
+    } catch (error) {
+        console.error("Error al cargar mis tareas:", error);
+    }
+}
+
+document.addEventListener('click', async (e) => {
+    if (!e.target.getAttribute('data-id')) return;
+    if (e.target.classList.contains('btn-asignar-tarea')) {
+        const docId = e.target.getAttribute('data-doc-id');
+        const selector = document.querySelector(`.selector-tarea[data-doc-id="${docId}"]`);
+        const tareaId = selector.value;
+        
+        if (!tareaId) {
+            alert("Seleccioná una tarea primero.");
+            return;
+        }
+        
+        try {
+            await updateDoc(doc(db, "documents", docId), {
+                tarea_id: tareaId
+            });
+            cargarDocumentosDelCliente(idClienteActivo);
+        } catch (error) {
+            console.error("Error al asignar tarea:", error);
+        }
+    }
+    
+    if (e.target.classList.contains('btn-agregar-doc')) {
+        const docId = e.target.getAttribute('data-doc-id');
+        const tareaId = e.target.getAttribute('data-tarea-id');
+        
+        try {
+            await updateDoc(doc(db, "documents", docId), {
+                tarea_id: tareaId
+            });
+            const tituloActual = document.getElementById('titulo-modal-docs-tarea').innerText.replace('Documentos: ', '');
+abrirModalDocsTarea(tareaId, tituloActual);
+abrirModalDocsDisponibles(tareaId);
+        } catch (error) {
+            console.error("Error al agregar documento:", error);
+        }
+    }
+});
+
+const closeModalDocsTarea = document.getElementById('close-modal-docs-tarea');
+closeModalDocsTarea.addEventListener('click', () => 
+    document.getElementById('modal-docs-tarea').style.display = 'none'
+);
+
+const closeModalDocsDisponibles = document.getElementById('close-modal-docs-disponibles');
+closeModalDocsDisponibles.addEventListener('click', () => 
+    document.getElementById('modal-docs-disponibles').style.display = 'none'
+);
+
+window.abrirModalDocsTarea = async function(idTarea, tituloTarea) {
+    document.getElementById('titulo-modal-docs-tarea').innerText = `Documentos: ${tituloTarea}`;
+    const listaDocs = document.getElementById('lista-docs-tarea');
+    listaDocs.innerHTML = '<p style="color: var(--text-muted);">Cargando...</p>';
+    document.getElementById('modal-docs-tarea').style.display = 'flex';
+
+    try {
+        // Traer documentos asignados a esta tarea
+        const qAsignados = query(
+            collection(db, "documents"),
+            where("tarea_id", "==", idTarea)
+        );
+        
+        // Traer documentos disponibles de la empresa sin tarea asignada
+        const qDisponibles = query(
+    collection(db, "documents"),
+    where("cliente_id", "==", idClienteActivo)
+);
+
+        const [snapAsignados, snapDisponibles] = await Promise.all([
+            getDocs(qAsignados),
+            getDocs(qDisponibles)
+        ]);
+
+        let html = '';
+
+        // Sección 1 — Asignados
+        html += `<h4 style="color: var(--verde-ok); margin-bottom: 10px;">Documentos asignados</h4>`;
+        if (snapAsignados.empty) {
+            html += `<p style="color: var(--text-muted); font-size: 0.85rem;">No hay documentos asignados aún.</p>`;
+        } else {
+            snapAsignados.forEach((docSnap) => {
+                const documento = docSnap.data();
+                html += `
+                    <div class="doc-item" style="margin-bottom: 8px;">
+                        <div>
+                            <h4>${documento.nombre_archivo}</h4>
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">
+                                ${documento.categoria} | ${documento.fecha_subida}
+                            </p>
+                        </div>
+                        <a href="${documento.url_descarga}" target="_blank" class="btn-action">
+                            Descargar
+                        </a>
+                    </div>
+                `;
+            });
+        }
+
+        // Sección 2 — Disponibles
+if (window.rolActual !== 'asistente') {
+    html += `<h4 style="color: var(--ambar-espera); margin: 20px 0 10px;">Agregar documentos</h4>`;
+    html += `<button class="btn-primary" onclick="abrirModalDocsDisponibles('${idTarea}')">
+        + Seleccionar documentos disponibles
+    </button>`;
+}
+
+        listaDocs.innerHTML = html;
+
+    } catch (error) {
+        console.error("Error al cargar documentos de tarea:", error);
+    }
+}
+
+window.abrirModalDocsDisponibles = async function(idTarea) {
+    const listaDocs = document.getElementById('lista-docs-disponibles');
+    listaDocs.innerHTML = '<p style="color: var(--text-muted);">Cargando...</p>';
+    document.getElementById('modal-docs-disponibles').style.display = 'flex';
+
+    try {
+        const q = query(
+            collection(db, "documents"),
+            where("cliente_id", "==", idClienteActivo)
+        );
+        const querySnapshot = await getDocs(q);
+
+        listaDocs.innerHTML = '';
+        let hayDisponibles = false;
+
+        querySnapshot.forEach((docSnap) => {
+            const documento = docSnap.data();
+            if (documento.tarea_id) return;
+            hayDisponibles = true;
+            listaDocs.innerHTML += `
+                <div class="doc-item" style="margin-bottom: 8px;">
+                    <div>
+                        <h4>${documento.nombre_archivo}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">
+                            ${documento.categoria} | ${documento.fecha_subida}
+                        </p>
+                    </div>
+                    <button class="btn-action btn-agregar-doc" 
+                        data-doc-id="${docSnap.id}" 
+                        data-tarea-id="${idTarea}">
+                        Agregar
+                    </button>
+                </div>
+            `;
+        });
+
+        if (!hayDisponibles) {
+            listaDocs.innerHTML = "<p style='color: var(--text-muted);'>No hay documentos disponibles.</p>";
+        }
+
+    } catch (error) {
+        console.error("Error al cargar documentos disponibles:", error);
+    }
+}
+
+// =========================================
+// MÓDULO: CHAT INTERNO
+// =========================================
+let unsubscribeChat = null;
+
+let usuariosChat = [];
+
+async function cargarUsuariosChat() {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    usuariosChat = [];
+    querySnapshot.forEach((doc) => {
+        const user = doc.data();
+        const rolUser = user.rol_jerarquia || '';
+        if (user.nombre_display && 
+            user.email !== auth.currentUser.email &&
+            rolUser !== 'cliente_externo') {
+            usuariosChat.push(user.nombre_display);
+        }
+    });
+}
+
+window.abrirChat = function() {
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('panel-chat').style.display = 'flex';
+    document.getElementById('badge-chat').style.display = 'none';
+    document.getElementById('badge-chat').innerText = '0';
+    
+    if (window.innerWidth <= 768) {
+        document.getElementById('main-content').style.display = 'none';
+    }
+    
+    localStorage.setItem(`chat_visto_${auth.currentUser.uid}`, new Date().toISOString());
+    cargarUsuariosChat();
+    
+    if (window.rolActual === 'senior') {
+        document.getElementById('btn-limpiar-chat').style.display = 'block';
+    }
+    const inputMensaje = document.getElementById('input-mensaje');
+    inputMensaje.addEventListener('input', () => {
+        const texto = inputMensaje.value;
+        const ultimoArroba = texto.lastIndexOf('@');
+        const sugerencias = document.getElementById('sugerencias-menciones');
+        
+        if (ultimoArroba === -1) {
+            sugerencias.style.display = 'none';
+            return;
+        }
+        
+        const busqueda = texto.slice(ultimoArroba + 1).toLowerCase();
+        const filtrados = usuariosChat.filter(u => u.toLowerCase().includes(busqueda));
+        
+        if (filtrados.length === 0) {
+            sugerencias.style.display = 'none';
+            return;
+        }
+        
+        sugerencias.innerHTML = '';
+        filtrados.forEach(nombre => {
+            sugerencias.innerHTML += `
+                <div onclick="insertarMencion('${nombre}')" 
+                    style="padding: 8px 12px; cursor: pointer; font-size: 0.85rem; color: var(--text-main);"
+                    onmouseover="this.style.background='var(--bg-hover)'"
+                    onmouseout="this.style.background='none'">
+                    @${nombre}
+                </div>
+            `;
+        });
+        sugerencias.style.display = 'block';
+    });
+    
+inputMensaje.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        enviarMensaje();
+    }
+});
+
+    localStorage.setItem(`chat_visto_${auth.currentUser.uid}`, new Date().toISOString());cargarUsuariosChat();
+    
+    const q = query(collection(db, "mensajes"), orderBy("fecha_timestamp", "asc"));
+    unsubscribeChat = onSnapshot(q, (snapshot) => {
+        const listaMensajes = document.getElementById('lista-mensajes');
+        listaMensajes.innerHTML = '';
+        snapshot.forEach((docSnap) => {
+            const msg = docSnap.data();
+            const esMio = msg.autor_uid === auth.currentUser.uid;
+            listaMensajes.innerHTML += `
+                <div style="display: flex; flex-direction: column; align-items: ${esMio ? 'flex-end' : 'flex-start'};">
+                    <span style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 3px;">
+                        ${esMio ? 'Vos' : msg.nombre_display} · ${msg.rol}
+                    </span>
+                   <div style="background: ${esMio ? 'var(--bg-hover)' : 'var(--bg-panel)'}; 
+            color: var(--text-main); 
+            padding: 8px 12px; border-radius: 8px; max-width: 85%; font-size: 0.85rem;">
+                        ${msg.texto.replace(/@(\w+\s?\w+)/g, '<span style="color: var(--ambar-espera); font-weight: 500;">@$1</span>')}
+                    </div>
+                </div>
+            `;
+        });
+        listaMensajes.scrollTop = listaMensajes.scrollHeight;
+    });
+}
+
+window.cerrarChat = function() {
+    if (unsubscribeChat) {
+        unsubscribeChat();
+        unsubscribeChat = null;
+    }
+    document.getElementById('panel-chat').style.display = 'none';
+    document.getElementById('menu').style.display = 'block';
+
+    // En mobile restauramos el main
+    if (window.innerWidth <= 768) {
+        document.getElementById('main-content').style.display = 'block';
+    }
+}
+
+window.enviarMensaje = async function() {
+    const input = document.getElementById('input-mensaje');
+    const texto = input.value.trim();
+    if (!texto) return;
+    
+    try {
+        await addDoc(collection(db, "mensajes"), {
+            texto: texto,
+            autor_uid: auth.currentUser.uid,
+            nombre_display: auth.currentUser.displayName || window.nombreDisplay || 'Usuario',
+            rol: window.rolActual || 'usuario',
+            fecha_timestamp: serverTimestamp()
+        });
+        input.value = '';
+    } catch (error) {
+        console.error("Error al enviar mensaje:", error);
+    }
+}
+
+window.insertarMencion = function(nombre) {
+    const input = document.getElementById('input-mensaje');
+    const texto = input.value;
+    const ultimoArroba = texto.lastIndexOf('@');
+    input.value = texto.slice(0, ultimoArroba) + '@' + nombre + ' ';
+    document.getElementById('sugerencias-menciones').style.display = 'none';
+    input.focus();
+}
+
+window.limpiarChat = async function() {
+    if (!confirm("¿Estás seguro? Esto borrará todo el historial del chat.")) return;
+    try {
+        const querySnapshot = await getDocs(collection(db, "mensajes"));
+        const borrados = querySnapshot.docs.map(d => deleteDoc(doc(db, "mensajes", d.id)));
+        await Promise.all(borrados);
+    } catch (error) {
+        console.error("Error al limpiar chat:", error);
+    }
+}
+
+async function iniciarBadgeChat() {
+    const ultimaVez = localStorage.getItem(`chat_visto_${auth.currentUser.uid}`);
+    if (!ultimaVez) return;
+    
+    const q = query(
+        collection(db, "mensajes"),
+        where("fecha_timestamp", ">", new Date(ultimaVez))
+    );
+    
+    onSnapshot(q, (snapshot) => {
+        const cantidad = snapshot.docs.filter(d => d.data().autor_uid !== auth.currentUser.uid).length;
+        const badge = document.getElementById('badge-chat');
+        if (cantidad > 0) {
+            badge.innerText = cantidad;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
+    });
+}
+
+iniciarApp();
