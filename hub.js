@@ -1,7 +1,7 @@
 // DOMino Profesional · Hub de gestión
 // Inicio con accesos, expedientes, calendario, herramientas y equipo.
 // Usa la conexión a Firebase que arma app.js (window.DOMINO).
-import { collection, getDocs, query, where, addDoc, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, getDocs, query, where, addDoc, setDoc, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const D = () => window.DOMINO;
 const esc = (v) => (D() ? D().esc(v) : String(v ?? ''));
@@ -320,7 +320,7 @@ document.addEventListener('submit', async (e) => {
   if (equipoCache.some((u) => String(u.email).toLowerCase() === email)) { D().aviso('Ese correo ya está cargado en el equipo.', 'error'); return; }
   const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
   try {
-    await addDoc(collection(D().db, 'users'), { email, nombre_display: nombre, rol_jerarquia: nivel, activo: true, creado: serverTimestamp() });
+    await setDoc(doc(D().db, 'users', email), { email, nombre_display: nombre, rol_jerarquia: nivel, activo: true, creado: serverTimestamp() });
   } catch (err) { console.error(err); D().aviso('No se pudo guardar a la persona. Verificá tus permisos.', 'error'); btn.disabled = false; return; }
   try {
     const r = await D().crearAcceso(email);
