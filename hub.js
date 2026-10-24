@@ -84,7 +84,9 @@ async function renderHub() {
   if (rol !== 'asistente') { $('hub-q').value = ''; $('hub-q-res').innerHTML = ''; cargarEmpresas().catch((e) => console.error(e)); }
   const nombre = D().nombre || '';
   $('hub-fecha').innerText = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-  $('hub-saludo').innerText = nombre ? `Hola, ${nombre}` : 'Hub de gestión';
+  // Si el nombre cargado es un título genérico (Contador 1, Asistente 2…), se saluda sin número ni cargo
+  const generico = /^(contador|contadora|asistente|profesional|usuario|admin|administrador)\b/i.test(String(nombre || '').trim());
+  $('hub-saludo').innerText = nombre && !generico ? `Hola, ${nombre}` : 'Hola, profesional';
   $('hub-sub').innerText = `${ROL_TXT[rol] || ''} · Todo el estudio en un solo lugar: elegí una herramienta y entrás en un toque.`;
   renderGrupos();
   try {

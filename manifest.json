@@ -1,6 +1,8 @@
 {
     "name": "DOMino Profesional",
-    "short_name": "DOMino",
+    "short_name": "DOMino Profesional",
+    "id": "./",
+    "lang": "es",
     "description": "Hub de gestión para estudios profesionales",
     "start_url": "./",
     "display": "standalone",

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'domino-v5';
+const CACHE_NAME = 'domino-v6';
 const urlsToCache = [
     './',
     'index.html',
