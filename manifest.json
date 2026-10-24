@@ -1,11 +1,11 @@
 {
-    "name": "DOMINO Profesional",
-    "short_name": "DOMINO",
-    "description": "Sistema de gestión para estudios contables",
-    "start_url": "/domino-profesional/",
+    "name": "DOMino Profesional",
+    "short_name": "DOMino",
+    "description": "Hub de gestión para estudios contables y profesionales",
+    "start_url": "./",
     "display": "standalone",
-    "background_color": "#0a0a0c",
-    "theme_color": "#0a0a0c",
+    "background_color": "#0a0a0a",
+    "theme_color": "#0a0a0a",
     "icons": [
         {
             "src": "imagenes/icono-512.png",

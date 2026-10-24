@@ -1,22 +1,31 @@
 /* PALETA DE COLORES PREMIUM-NOIR */
 :root {
-    --bg-base: #0a0a0c;       /* Negro profundo de fondo */
-    --bg-panel: #16161a;      /* Gris Charcoal para las tarjetas */
-    --bg-hover: #24242b;      /* Gris más claro al pasar el mouse */
-    --text-main: #f0f0f0;     /* Blanco suave para lectura cómoda */
-    --text-muted: #8b8b99;    /* Gris plata para textos secundarios */
-    
-    /* Acentos de estado */
-    --rojo-alerta: #ff4444;   
-    --verde-ok: #00e676;      
-    --ambar-espera: #ffbb33;  
+    /* Kit de marca The DOM Studio Web: Premium-Noir */
+    --bg-base: #0a0a0a;
+    --bg-panel: #16181c;
+    --bg-hover: #1f2227;
+    --text-main: #f4f1ea;
+    --text-muted: #a8a396;
+    --gold: #d4af37;
+    --gold-light: #e8c766;
+    --bronze: #9e7535;
+    --hairline: #d4af3740;
+    --line: #2a2d33;
+    --on-gold: #0a0a0a;
+    --process: #22d3ee;
+    /* Estados: siempre acompañados de texto */
+    --rojo-alerta: #ff6b61;
+    --verde-ok: #4cc38a;
+    --ambar-espera: #e8c766;
+    --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
+    --font-sans: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box; /* Clave para que los anchos no se rompan */
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-sans);
 }
 
 body {
@@ -41,10 +50,12 @@ body {
 .sidebar {
     background-color: var(--bg-panel);
     padding: 20px;
-    border-right: 1px solid #2a2a35;
+    border-right: 1px solid var(--line);
     display: flex;
     flex-direction: column;
     height: 100vh;
+    position: sticky;
+    top: 0;
 }
 
 .brand-wrapper {
@@ -132,7 +143,7 @@ body {
     background-color: var(--bg-panel);
     padding: 25px;
     border-radius: 12px;
-    border: 1px solid #2a2a35;
+    border: 1px solid var(--line);
 }
 
 .kpi-card h3 {
@@ -227,7 +238,7 @@ body {
 
 .modal-content {
     background-color: var(--bg-panel);
-    border: 1px solid #2a2a35;
+    border: 1px solid var(--line);
     padding: 30px;
     border-radius: 12px;
     width: 90%;
@@ -258,7 +269,7 @@ body {
 
 .form-group input, .form-group select {
     background-color: var(--bg-base);
-    border: 1px solid #2a2a35;
+    border: 1px solid var(--line);
     color: var(--text-main);
     padding: 12px;
     border-radius: 6px;
@@ -287,7 +298,7 @@ body {
     background-color: var(--bg-panel);
     padding: 15px 20px;
     border-radius: 8px;
-    border: 1px solid #2a2a35;
+    border: 1px solid var(--line);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -316,7 +327,7 @@ body {
     background-color: var(--bg-panel);
     padding: 25px;
     border-radius: 12px;
-    border: 1px dashed #2a2a35; /* Borde punteado clásico de zonas de subida */
+    border: 1px dashed var(--line); /* Borde punteado clásico de zonas de subida */
 }
 
 .doc-item {
@@ -328,9 +339,9 @@ body {
     border-radius: 8px;
     border-left: 4px solid var(--text-muted); /* Gris por defecto, luego cambiaremos por color según estado */
     margin-top: 10px;
-    border-top: 1px solid #2a2a35;
-    border-right: 1px solid #2a2a35;
-    border-bottom: 1px solid #2a2a35;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
 }
 
 .doc-item h4 {
@@ -341,7 +352,7 @@ body {
 .mini-selector, .full-selector {
     background: var(--bg-panel);
     color: var(--text-main);
-    border: 1px solid #2a2a35;
+    border: 1px solid var(--line);
     padding: 8px 15px;
     border-radius: 6px;
     outline: none;
@@ -356,7 +367,7 @@ body {
 
     .sidebar {
         border-right: none;
-        border-bottom: 1px solid #2a2a35;
+        border-bottom: 1px solid var(--line);
         padding: 15px;
         height: auto;
     }
@@ -464,7 +475,7 @@ body {
     background-color: var(--bg-panel);
     border-radius: 12px;
     padding: 20px;
-    border: 1px solid #2a2a35;
+    border: 1px solid var(--line);
     min-height: 300px;
 }
 
@@ -473,7 +484,7 @@ body {
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 10px;
-    border: 1px solid #2a2a35;
+    border: 1px solid var(--line);
     cursor: pointer;
     transition: 0.2s;
 }

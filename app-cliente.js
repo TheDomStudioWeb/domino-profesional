@@ -17,6 +17,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 window.cerrarSesionCliente = async function() {
     if (confirm("¿Estás seguro que querés cerrar sesión?")) {
@@ -36,26 +37,31 @@ async function cargarEmpresasCliente(usuarioId) {
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
+            // Sin empresa asociada a este usuario: no se puede subir ni listar nada
             selector.style.display = 'none';
+            ID_CLIENTE = null;
             return;
         }
 
-        if (querySnapshot.size === 1) {
+        const empresas = [];
+        querySnapshot.forEach((d) => empresas.push({ id: d.id, nombre: d.data().nombre_empresa }));
+        ID_CLIENTE = empresas[0].id;
+
+        if (empresas.length === 1) {
             selector.style.display = 'none';
         } else {
             selector.innerHTML = '';
-            querySnapshot.forEach((doc) => {
-                const empresa = doc.data();
-                selector.innerHTML += `<option value="${doc.id}">${empresa.nombre_empresa}</option>`;
+            empresas.forEach((e) => {
+                const op = document.createElement('option');
+                op.value = e.id;
+                op.textContent = e.nombre; // textContent: el nombre no se interpreta como HTML
+                selector.appendChild(op);
             });
             selector.style.display = 'block';
-         selector.addEventListener('change', () => {
-    cargarEntregas('recientes');
-});
-    selector.addEventListener('change', () => {
-    ID_CLIENTE_PRUEBA = selector.value;
-    cargarEntregas('recientes');
-});
+            selector.addEventListener('change', () => {
+                ID_CLIENTE = selector.value;
+                cargarEntregas('recientes');
+            });
         }
 
     } catch (error) {
@@ -70,18 +76,24 @@ onAuthStateChanged(auth, async (usuario) => {
     }
     const usuarioId = usuario.email;
     await cargarEmpresasCliente(usuarioId);
+    if (!ID_CLIENTE) {
+        document.getElementById('lista-entregas').innerHTML = "<p style='color: var(--text-muted);'>Su usuario todavía no tiene una empresa asignada. Comuníquese con el estudio.</p>";
+        document.getElementById('form-cliente-subir').style.display = 'none';
+        return;
+    }
     cargarEntregas('recientes');
 });
 
 const formCliente = document.getElementById('form-cliente-subir');
 const mensajeExito = document.getElementById('mensaje-exito');
 
-// Simulamos que el cliente ya entró con su Magic Link (Hardcodeamos el ID de la Empresa Alfa para la prueba)
-// En producción, este ID vendrá en la URL (ej: portal-cliente.html?id=ID_EMPRESA_ALFA)
-let ID_CLIENTE_PRUEBA = "Hmv0osbnN35e2QXB9Jdw"; 
+// Empresa activa del cliente: se toma de las empresas asociadas a su usuario (antes estaba fija en una empresa de prueba,
+// por lo que cualquier documento subido terminaba en la carpeta de esa empresa).
+let ID_CLIENTE = null;
 
 formCliente.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!ID_CLIENTE) return;
 
     const categoria = document.getElementById('cliente-categoria').value;
     const archivoInput = document.getElementById('cliente-archivo');
@@ -95,11 +107,11 @@ formCliente.addEventListener('submit', async (e) => {
 
         for (const archivo of archivos) {
             const nombreArchivo = archivo.name;
-            const storageRef = ref(storage, `documentos/${ID_CLIENTE_PRUEBA}/${fechaHoy}/${nombreArchivo}`);
+            const storageRef = ref(storage, `documentos/${ID_CLIENTE}/${new Date().toISOString().slice(0, 10)}/${Date.now()}_${nombreArchivo}`);
             await uploadBytes(storageRef, archivo);
             const downloadURL = await getDownloadURL(storageRef);
             await addDoc(collection(db, "documents"), {
-                cliente_id: ID_CLIENTE_PRUEBA,
+                cliente_id: ID_CLIENTE,
                 categoria: categoria,
                 nombre_archivo: nombreArchivo,
                 fecha_subida: fechaHoy,
@@ -155,13 +167,13 @@ async function cargarEntregas(filtro = 'recientes', orden = 'reciente') {
         if (filtro === 'recientes') {
             q = query(
                 collection(db, "entregas"),
-                where("cliente_id", "==", ID_CLIENTE_PRUEBA),
+                where("cliente_id", "==", ID_CLIENTE),
                 where("fecha_timestamp", ">=", limite)
             );
         } else {
             q = query(
                 collection(db, "entregas"),
-                where("cliente_id", "==", ID_CLIENTE_PRUEBA),
+                where("cliente_id", "==", ID_CLIENTE),
                 where("fecha_timestamp", "<", limite)
             );
         }
@@ -189,12 +201,12 @@ entregas.forEach((entrega) => {
     listaEntregas.innerHTML += `
         <div class="doc-item" style="margin-bottom: 10px;">
             <div>
-                <h4>${entrega.nombre_archivo}</h4>
+                <h4>${esc(entrega.nombre_archivo)}</h4>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">
-                    ${entrega.categoria} | ${entrega.fecha_envio}
+                    ${esc(entrega.categoria)} | ${esc(entrega.fecha_envio)}
                 </p>
             </div>
-            <a href="${entrega.url_descarga}" target="_blank" class="btn-activar">
+            <a href="${esc(entrega.url_descarga)}" target="_blank" rel="noopener" class="btn-activar">
                 Descargar
             </a>
         </div>

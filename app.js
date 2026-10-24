@@ -20,6 +20,10 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
 
+// Escapa texto antes de insertarlo como HTML (nombres, archivos, mensajes)
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+window.DOMINO = { db, auth, esc, listo: false };
+
 const modal = document.getElementById('modal-cliente');
 const btnNuevoCliente = document.getElementById('btn-nuevo-cliente');
 const btnCloseModal = document.getElementById('close-modal');
@@ -88,9 +92,9 @@ const querySnapshot = await getDocs(q);
 
             const clienteHTML = `
                 <div class="client-card" id="card-${idDoc}">
-                    <div onclick="abrirExpediente('${idDoc}', '${cliente.nombre_empresa}')" style="cursor: pointer; flex-grow: 1;">
-                        <h4 style="pointer-events: none;">${cliente.nombre_empresa}</h4>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">CUIT: ${cliente.cuit}</p>
+                    <div data-act="expediente" data-id="${esc(idDoc)}" data-nombre="${esc(cliente.nombre_empresa)}" role="button" tabindex="0" style="cursor: pointer; flex-grow: 1;">
+                        <h4 style="pointer-events: none;">${esc(cliente.nombre_empresa)}</h4>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">CUIT: ${esc(cliente.cuit)}</p>
                     </div>
                     <button class="${cliente.estado === 'activo' ? 'btn-baja' : 'btn-activar'}" 
         data-id="${idDoc}" 
@@ -195,14 +199,14 @@ const btnCloseModalTarea = document.getElementById('close-modal-tarea');
 const formAltaTarea = document.getElementById('form-alta-tarea');
 
 let cacheClientes = {};
+window.DOMINO.clientes = cacheClientes;
+let vistaOrigen = 'expedientes';
+let vistaActual = null;
 let idClienteActivo = null; 
 
 btnVolver.addEventListener('click', () => {
-    vistaExpediente.style.display = 'none';
-    vistaDashboard.style.display = 'block';
     idClienteActivo = null;
-    console.log("Volviendo al dashboard, cargando prioridades...");
-    cargarPrioridades(); 
+    navegarA(window.rolActual === 'asistente' ? 'mis-tareas' : (vistaOrigen || 'expedientes'));
 });
 
 btnNuevaTarea.addEventListener('click', () => modalTarea.style.display = 'flex');
@@ -210,14 +214,10 @@ btnCloseModalTarea.addEventListener('click', () => modalTarea.style.display = 'n
 
 
 window.abrirExpediente = function(id, nombre) {
+    if (vistaActual && vistaActual !== 'expediente' && vistaActual !== 'buzon') vistaOrigen = vistaActual;
     idClienteActivo = id; 
     tituloExpediente.innerText = nombre; 
-    
-    // Transición visual
-    vistaDashboard.style.display = 'none';
-    vistaExpediente.style.display = 'block';
-    
-    // Disparamos la búsqueda de tareas de ESTE cliente
+    mostrarVista('expediente');
     cargarTareasDelCliente(id);
 };
 
@@ -270,19 +270,20 @@ async function cargarTareasDelCliente(id) {
             listaTareas.innerHTML += `
                 <div class="task-item ${colorEstado[tarea.estado] || 'border-ambar'}">
                     <div class="task-info">
-                        <h4>${tarea.titulo}</h4>
+                        <h4>${esc(tarea.titulo)}</h4>
                         <p style="color: var(--text-muted); font-size: 0.85rem;">
-                            Asignado a: <strong>${tarea.responsable}</strong> | Vence: ${tarea.vencimiento} | Estado: ${tarea.estado}
+                            Asignado a: <strong>${esc(tarea.responsable)}</strong> | Vence: ${esc(tarea.vencimiento)} | Estado: ${esc(tarea.estado)}
                         </p>
                     </div>
                     <div style="display: flex; gap: 8px;">
-    <button class="btn-action" onclick="abrirModalDocsTarea('${idTarea}', '${tarea.titulo}')">
+    <button class="btn-action" data-act="docs-tarea" data-id="${esc(idTarea)}" data-titulo="${esc(tarea.titulo)}">
         Documentos
     </button>
-    <button class="btn-secundario" onclick="abrirModalEstado('${idTarea}', '${tarea.estado}', '${tarea.titulo}')">
-        ${tarea.estado}
+    <button class="btn-secundario" data-act="estado" data-id="${esc(idTarea)}" data-estado="${esc(tarea.estado)}" data-titulo="${esc(tarea.titulo)}">
+        ${esc(tarea.estado)}
     </button>
 </div>
+                </div>
             `;
         });
     } catch (error) {
@@ -311,7 +312,7 @@ async function cargarTareasEnSelectores(idCliente) {
             selector.innerHTML = '<option value="">Asignar a tarea...</option>';
             querySnapshot.forEach((taskDoc) => {
                 const tarea = taskDoc.data();
-                selector.innerHTML += `<option value="${taskDoc.id}">${tarea.titulo} — ${tarea.responsable || 'Sin asignar'}</option>`;
+                selector.innerHTML += `<option value="${esc(taskDoc.id)}">${esc(tarea.titulo)} — ${esc(tarea.responsable || 'Sin asignar')}</option>`;
             });
         });
     } catch (error) {
@@ -320,19 +321,14 @@ async function cargarTareasEnSelectores(idCliente) {
 }
 
 // 1. Navegación: Ir de Expediente a Buzón
+['filtro-fecha', 'filtro-area', 'filtro-estado', 'filtro-asignacion'].forEach((fid) => {
+    document.getElementById(fid).addEventListener('change', () => { if (idClienteActivo) cargarDocumentosDelCliente(idClienteActivo); });
+});
+
 window.abrirBuzon = function() {
     if (!idClienteActivo) return; // Si no hay cliente seleccionado, no hace nada
-    document.getElementById('filtro-fecha').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
-document.getElementById('filtro-area').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
-document.getElementById('filtro-estado').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
-document.getElementById('filtro-asignacion').addEventListener('change', () => cargarDocumentosDelCliente(idClienteActivo));
-    
-    // Cambiamos el título
-    document.getElementById('titulo-buzon').innerText = "Buzón Documental";
-    
-    // Transición visual
-    vistaExpediente.style.display = 'none';
-    vistaBuzon.style.display = 'block';
+    document.getElementById('titulo-buzon').innerText = "Buzón Documental · " + (tituloExpediente.innerText || '');
+    mostrarVista('buzon');
     
     // Cargamos los documentos previos
     cargarDocumentosDelCliente(idClienteActivo);
@@ -341,8 +337,7 @@ document.getElementById('filtro-asignacion').addEventListener('change', () => ca
 
 // 2. Navegación: Volver de Buzón a Expediente
 btnVolverBuzon.addEventListener('click', () => {
-    vistaBuzon.style.display = 'none';
-    vistaExpediente.style.display = 'block';
+    mostrarVista('expediente');
 });
 
 // 3. Guardar el registro del documento
@@ -358,21 +353,35 @@ formSubirDoc.addEventListener('submit', async (e) => {
 
     // Generamos la fecha actual en formato legible
     const fechaHoy = new Date().toLocaleDateString('es-ES');
+    const btnSubir = formSubirDoc.querySelector('.btn-primary');
 
     try {
+        btnSubir.disabled = true;
+        btnSubir.innerText = "Subiendo...";
+        // El archivo se guarda en Storage (antes solo se registraba el nombre y no se podía descargar)
+        const carpeta = new Date().toISOString().slice(0, 10);
+        const storageRef = ref(storage, `documentos/${idClienteActivo}/${carpeta}/${Date.now()}_${nombreArchivo}`);
+        await uploadBytes(storageRef, archivoInput.files[0]);
+        const urlDescarga = await getDownloadURL(storageRef);
+
         await addDoc(collection(db, "documents"), {
             cliente_id: idClienteActivo,
             categoria: categoria,
             nombre_archivo: nombreArchivo,
             fecha_subida: fechaHoy,
-            estado: "Pendiente de Procesar" // Ideal para que el Asistente sepa qué es nuevo
+            estado: "Pendiente de Procesar", // Ideal para que el Asistente sepa qué es nuevo
+            url_descarga: urlDescarga
         });
 
         formSubirDoc.reset();
         cargarDocumentosDelCliente(idClienteActivo); // Recargamos la lista
+        actualizarKPIs();
 
     } catch (error) {
         alert("Error al registrar el documento: " + error.message);
+    } finally {
+        btnSubir.disabled = false;
+        btnSubir.innerText = "Subir y Centralizar";
     }
 });
 
@@ -433,20 +442,20 @@ async function cargarDocumentosDelCliente(id) {
             listaDocs.innerHTML += `
                 <div class="doc-item">
                     <div>
-                        <h4>${documento.nombre_archivo}</h4>
+                        <h4>${esc(documento.nombre_archivo)}</h4>
                         <p style="color: var(--text-muted); font-size: 0.85rem;">
-                            Área: <strong>${documento.categoria}</strong> | Fecha: ${documento.fecha_subida}
+                            Área: <strong>${esc(documento.categoria)}</strong> | Fecha: ${esc(documento.fecha_subida)}
                         </p>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                         <span style="font-size: 0.85rem; padding: 5px 10px; background: var(--bg-panel); border-radius: 4px; color: var(--ambar-espera);">
-                            ${documento.estado}
+                            ${esc(documento.estado)}
                         </span>
                         ${!documento.tarea_id ? `
-                        <select class="mini-selector selector-tarea" data-doc-id="${documento.id}" style="font-size: 0.8rem;">
+                        <select class="mini-selector selector-tarea" data-doc-id="${esc(documento.id)}" style="font-size: 0.8rem;">
                             <option value="">Asignar a tarea...</option>
                         </select>
-                        <button class="btn-action btn-asignar-tarea" data-doc-id="${documento.id}" style="font-size: 0.8rem;">
+                        <button class="btn-action btn-asignar-tarea" data-id="x" data-doc-id="${esc(documento.id)}" style="font-size: 0.8rem;">
                             Asignar
                         </button>
                         ` : `<span style="font-size: 0.75rem; color: var(--verde-ok);">✓ Asignado</span>`}
@@ -508,7 +517,7 @@ window.abrirModalEstado = function(id, estadoActual, tituloTarea) {
     camposEnProceso.style.display = 'none';
     btnConfirmarEstado.style.display = 'none';
     
-    const siguientes = mapaEstados[estadoActual];
+    const siguientes = mapaEstados[estadoActual] || [];
     opcionesEstado.innerHTML = '';
     
     
@@ -560,72 +569,82 @@ async function cargarCacheClientes() {
     });
 }
 
-function aplicarPermisosPorRol(rol, nombreDisplay) {
-    console.log("Rol recibido:", rol, "Nombre:", nombreDisplay);
-    const btnNuevoCliente = document.getElementById('btn-nuevo-cliente');
-    const selectorFiltro = document.getElementById('selector-empresas-contador');
-    
-    if (rol === 'senior') {
-        // Acceso completo — no ocultamos nada
-        btnNuevoCliente.style.display = 'block';
-        selectorFiltro.style.display = 'block';
-        
-    } else if (rol === 'midsenior') {
-        // Puede crear clientes pero solo ve sus empresas
-        btnNuevoCliente.style.display = 'block';
-        selectorFiltro.style.display = 'block';
-        
-    } else if (rol === 'asistente') {
-        btnNuevoCliente.style.display = 'none';
-        selectorFiltro.style.display = 'none';
-        document.querySelector('.client-board').style.display = 'none';
-        document.querySelector('.kpi-grid').style.display = 'none';
-        document.getElementById('vista-mis-tareas').style.display = 'block';
-        cargarMisTareas(nombreDisplay);
-    }
-    
-    // Actualizar el nombre del rol en el topbar
+const ETIQUETA_ROL = { senior: 'Contador Senior', midsenior: 'Contador Mid-Senior', asistente: 'Asistente' };
+
+function aplicarPermisosPorRol(rol) {
+    // El menú muestra solo lo que corresponde al nivel de cada persona
+    document.querySelectorAll('#menu a[data-roles]').forEach((a) => {
+        a.style.display = a.dataset.roles.split(',').includes(rol) ? '' : 'none';
+    });
     const spanRol = document.querySelector('.user-profile span');
-    if (spanRol) {
-        spanRol.innerText = rol === 'senior' ? 'Contador Senior' : 
-                            rol === 'midsenior' ? 'Contador Mid-Senior' : 'Asistente';
+    if (spanRol) spanRol.innerText = ETIQUETA_ROL[rol] || rol;
+}
+
+// Indicadores del Centro de Comando (esta función se llamaba pero no existía)
+async function actualizarKPIs() {
+    try {
+        const hoy = new Date().toISOString().split('T')[0];
+        const [tareas, pendientes] = await Promise.all([
+            getDocs(collection(db, "tasks")),
+            getDocs(query(collection(db, "documents"), where("estado", "==", "Pendiente de Procesar")))
+        ]);
+        let venceHoy = 0, enProceso = 0, listos = 0;
+        tareas.forEach((t) => {
+            const d = t.data();
+            if (d.estado === "Proceso Completo/Finalizado") { listos++; return; }
+            if (d.vencimiento === hoy) venceHoy++;
+            if (d.estado === "En Proceso" || d.estado === "Procesado/Liquidado") enProceso++;
+        });
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+        set('kpi-vencimientos', venceHoy);
+        set('kpi-en-proceso', enProceso);
+        set('kpi-finalizados', listos);
+        set('kpi-docs-numero', pendientes.size);
+        window.DOMINO.kpis = { venceHoy, enProceso, listos, docsPendientes: pendientes.size };
+        window.dispatchEvent(new CustomEvent('domino:kpis', { detail: window.DOMINO.kpis }));
+    } catch (error) {
+        console.error("Error al calcular indicadores:", error);
     }
 }
+window.actualizarKPIs = actualizarKPIs;
 
 async function iniciarApp() {
     onAuthStateChanged(auth, async (usuario) => {
-        console.log("Auth state changed:", usuario);
         if (!usuario) {
             window.location.href = 'login.html';
             return;
         }
         
         const q = query(collection(db, "users"), where("email", "==", usuario.email));
-const userSnap = await getDocs(q);
+        const userSnap = await getDocs(q);
 
-if (userSnap.empty) {
-    alert("Usuario sin perfil asignado. Contacte al administrador.");
-    await signOut(auth);
-    window.location.href = 'login.html';
-    return;
-}
+        if (userSnap.empty) {
+            alert("Usuario sin perfil asignado. Contacte al administrador.");
+            await signOut(auth);
+            window.location.href = 'login.html';
+            return;
+        }
 
-const rolUsuario = userSnap.docs[0].data().rol_jerarquia;
-window.rolActual = rolUsuario;
-        
+        const perfil = userSnap.docs[0].data();
+        const rolUsuario = perfil.rol_jerarquia;
+        window.rolActual = rolUsuario;
+        window.nombreDisplay = perfil.nombre_display || '';
+        Object.assign(window.DOMINO, { rol: rolUsuario, nombre: window.nombreDisplay, email: usuario.email });
+
         document.getElementById('main-content').style.display = 'block';
-        const nombreDisplay = userSnap.docs[0].data().nombre_display || '';
-        aplicarPermisosPorRol(rolUsuario, nombreDisplay);
-       if (rolUsuario !== 'asistente') {
-    await cargarClientes(selectorContador.value);
-    await actualizarKPIs();
-    await cargarPrioridades();
-} else {
-    await cargarCacheClientes();
-}
+        aplicarPermisosPorRol(rolUsuario);
 
-window.nombreDisplay = userSnap.docs[0].data().nombre_display || '';
-iniciarBadgeChat();
+        // Primero el cache de empresas (lo usan tareas y prioridades), después el resto
+        await cargarCacheClientes();
+        if (rolUsuario !== 'asistente') {
+            await Promise.all([cargarClientes(selectorContador.value), actualizarKPIs(), cargarPrioridades()]);
+        } else {
+            await cargarMisTareas(window.nombreDisplay);
+        }
+        iniciarBadgeChat();
+        window.DOMINO.listo = true;
+        window.dispatchEvent(new Event('domino:listo'));
+        navegarA('hub');
     });
 }
 
@@ -667,23 +686,23 @@ for (const docSnap of querySnapshot.docs) {
     listaDocs.innerHTML += `
         <div class="doc-item">
             <div>
-                <h4>${documento.nombre_archivo}</h4>
+                <h4>${esc(documento.nombre_archivo)}</h4>
                 <p style="color: var(--text-muted); font-size: 0.85rem;">
-                    Empresa: <strong>${nombreEmpresa}</strong> | 
-                    Área: ${documento.categoria} | 
-                    Fecha: ${documento.fecha_subida}
+                    Empresa: <strong>${esc(nombreEmpresa)}</strong> | 
+                    Área: ${esc(documento.categoria)} | 
+                    Fecha: ${esc(documento.fecha_subida)}
                 </p>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
     <span style="font-size: 0.85rem; padding: 5px 10px; background: var(--bg-panel); border-radius: 4px; color: var(--ambar-espera);">
-        ${documento.estado}
+        ${esc(documento.estado)}
     </span>
-    <button class="btn-action" 
-        data-id="${idDocumento}"
-        data-url="${documento.url_descarga || ''}"
-        onclick="descargarDocumento('${idDocumento}', '${documento.url_descarga || ''}', '${nombreEmpresa}', '${documento.categoria}', '${documento.nombre_archivo}')">
+    ${documento.url_descarga ? `<button class="btn-action" data-act="descargar"
+        data-id="${esc(idDocumento)}"
+        data-url="${esc(documento.url_descarga)}"
+        data-empresa="${esc(nombreEmpresa)}" data-categoria="${esc(documento.categoria)}" data-archivo="${esc(documento.nombre_archivo)}">
         Descargar
-    </button>
+    </button>` : `<span style="font-size:0.75rem;color:var(--text-muted);">Sin archivo adjunto</span>`}
 </div>
         </div>
     `;
@@ -723,19 +742,20 @@ window.cargarPrioridades = async function() {
 
         querySnapshot.forEach((taskDoc) => {
             const tarea = taskDoc.data();
+            if (tarea.estado === "Proceso Completo/Finalizado") return;
             const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
             
             listaPrioridades.innerHTML += `
                 <div class="task-item ${colorEstado[tarea.estado] || 'border-ambar'}">
                     <div class="task-info">
-                        <h4>${tarea.titulo}</h4>
+                        <h4>${esc(tarea.titulo)}</h4>
                         <p style="color: var(--text-muted); font-size: 0.85rem;">
-                            <strong>${nombreEmpresa}</strong> | 
-                            Área: ${tarea.responsable} | 
-                            Vence: ${tarea.vencimiento}
+                            <strong>${esc(nombreEmpresa)}</strong> | 
+                            Área: ${esc(tarea.responsable)} | 
+                            Vence: ${esc(tarea.vencimiento)} | Estado: ${esc(tarea.estado)}
                         </p>
                     </div>
-                    <button class="btn-action" onclick="abrirExpediente('${tarea.cliente_id}', '${nombreEmpresa}')">
+                    <button class="btn-action" data-act="expediente" data-id="${esc(tarea.cliente_id)}" data-nombre="${esc(nombreEmpresa)}">
                         Ver Expediente
                     </button>
                 </div>
@@ -832,10 +852,10 @@ async function cargarKanban() {
             const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
             
             columna.innerHTML += `
-                <div class="kanban-card" onclick="abrirExpediente('${tarea.cliente_id}', '${nombreEmpresa}')">
-                    <h4>${tarea.titulo}</h4>
-                    <p>${nombreEmpresa}</p>
-                    <p>Vence: ${tarea.vencimiento || 'Sin fecha'}</p>
+                <div class="kanban-card" data-act="expediente" data-id="${esc(tarea.cliente_id)}" data-nombre="${esc(nombreEmpresa)}" role="button" tabindex="0">
+                    <h4>${esc(tarea.titulo)}</h4>
+                    <p>${esc(nombreEmpresa)}</p>
+                    <p>Vence: ${esc(tarea.vencimiento || 'Sin fecha')}</p>
                 </div>
             `;
         });
@@ -848,20 +868,31 @@ async function cargarKanban() {
     }
 }
 
+const VISTAS = ['hub', 'dashboard', 'cartera', 'expedientes', 'expediente', 'buzon', 'kanban', 'mis-tareas', 'calendario', 'herramientas', 'equipo'];
+
+function mostrarVista(nombre) {
+    vistaActual = nombre;
+    VISTAS.forEach((v) => {
+        const el = document.getElementById('vista-' + v);
+        if (el) el.style.display = v === nombre ? 'block' : 'none';
+    });
+    // En el menú se resalta la sección a la que pertenece la vista
+    const grupo = { expediente: 'expedientes', buzon: 'expedientes' }[nombre] || nombre;
+    document.querySelectorAll('#menu a').forEach((a) => a.classList.toggle('active', a.dataset.vista === grupo));
+    document.getElementById('menu').classList.remove('show');
+    window.scrollTo(0, 0);
+    window.dispatchEvent(new CustomEvent('domino:vista', { detail: nombre }));
+}
+
 window.navegarA = function(seccion) {
-    document.getElementById('vista-dashboard').style.display = 'none';
-    document.getElementById('vista-kanban').style.display = 'none';
-    
-    document.querySelectorAll('.menu a').forEach(a => a.classList.remove('active'));
-    
-    if (seccion === 'dashboard') {
-        document.getElementById('vista-dashboard').style.display = 'block';
-        document.getElementById('nav-dashboard').classList.add('active');
-    } else if (seccion === 'kanban') {
-        document.getElementById('vista-kanban').style.display = 'block';
-        document.getElementById('nav-kanban').classList.add('active');
-        cargarKanban();
-    }
+    if (window.rolActual === 'asistente' && ['dashboard', 'cartera', 'expedientes', 'kanban', 'equipo'].includes(seccion)) seccion = 'mis-tareas';
+    if (window.rolActual && window.rolActual !== 'senior' && seccion === 'equipo') seccion = 'hub';
+    if (document.getElementById('panel-chat').style.display === 'flex') cerrarChat();
+    mostrarVista(seccion);
+    if (seccion === 'dashboard') { actualizarKPIs(); cargarPrioridades(); }
+    else if (seccion === 'cartera') cargarClientes(selectorContador.value);
+    else if (seccion === 'kanban') cargarKanban();
+    else if (seccion === 'mis-tareas') cargarMisTareas(window.nombreDisplay);
 }
 window.cerrarSesion = async function() {
     if (confirm("¿Estás seguro que querés cerrar sesión?")) {
@@ -872,9 +903,10 @@ window.cerrarSesion = async function() {
 
 // Autorefresh cada 15 minutos
 setInterval(() => {
-    actualizarKPIs();
-    cargarPrioridades();
-    console.log("Autorefresh ejecutado:", new Date().toLocaleTimeString('es-ES'));
+    if (window.rolActual && window.rolActual !== 'asistente') {
+        actualizarKPIs();
+        cargarPrioridades();
+    }
 }, 10 * 60 * 1000);
 
 async function cargarMisTareas(nombreAsistente) {
@@ -913,10 +945,10 @@ async function cargarMisTareas(nombreAsistente) {
             const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
             
             columna.innerHTML += `
-    <div class="kanban-card" onclick="abrirModalDocsTarea('${taskDoc.id}', '${tarea.titulo}')">
-        <h4>${tarea.titulo}</h4>
-        <p>${nombreEmpresa}</p>
-        <p>Vence: ${tarea.vencimiento || 'Sin fecha'}</p>
+    <div class="kanban-card" data-act="docs-tarea" data-id="${esc(taskDoc.id)}" data-titulo="${esc(tarea.titulo)}" data-cliente="${esc(tarea.cliente_id)}" role="button" tabindex="0">
+        <h4>${esc(tarea.titulo)}</h4>
+        <p>${esc(nombreEmpresa)}</p>
+        <p>Vence: ${esc(tarea.vencimiento || 'Sin fecha')}</p>
     </div>
 `;
         });
@@ -929,8 +961,22 @@ async function cargarMisTareas(nombreAsistente) {
     }
 }
 
+// Acciones de tarjetas (delegadas, con datos escapados en atributos)
+document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const d = el.dataset;
+    if (d.act === 'expediente') abrirExpediente(d.id, d.nombre);
+    else if (d.act === 'docs-tarea') { if (d.cliente) idClienteActivo = d.cliente; abrirModalDocsTarea(d.id, d.titulo); }
+    else if (d.act === 'estado') abrirModalEstado(d.id, d.estado, d.titulo);
+    else if (d.act === 'descargar') descargarDocumento(d.id, d.url, d.empresa, d.categoria, d.archivo);
+    else if (d.act === 'buzon') { abrirExpediente(d.id, d.nombre); abrirBuzon(); }
+});
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-act][role="button"]')) { e.preventDefault(); e.target.click(); }
+});
+
 document.addEventListener('click', async (e) => {
-    if (!e.target.getAttribute('data-id')) return;
     if (e.target.classList.contains('btn-asignar-tarea')) {
         const docId = e.target.getAttribute('data-doc-id');
         const selector = document.querySelector(`.selector-tarea[data-doc-id="${docId}"]`);
@@ -1014,14 +1060,12 @@ window.abrirModalDocsTarea = async function(idTarea, tituloTarea) {
                 html += `
                     <div class="doc-item" style="margin-bottom: 8px;">
                         <div>
-                            <h4>${documento.nombre_archivo}</h4>
+                            <h4>${esc(documento.nombre_archivo)}</h4>
                             <p style="color: var(--text-muted); font-size: 0.85rem;">
-                                ${documento.categoria} | ${documento.fecha_subida}
+                                ${esc(documento.categoria)} | ${esc(documento.fecha_subida)}
                             </p>
                         </div>
-                        <a href="${documento.url_descarga}" target="_blank" class="btn-action">
-                            Descargar
-                        </a>
+                        ${documento.url_descarga ? `<a href="${esc(documento.url_descarga)}" target="_blank" rel="noopener" class="btn-action">Descargar</a>` : `<span style="font-size:0.75rem;color:var(--text-muted);">Sin archivo</span>`}
                     </div>
                 `;
             });
@@ -1030,7 +1074,7 @@ window.abrirModalDocsTarea = async function(idTarea, tituloTarea) {
         // Sección 2 — Disponibles
 if (window.rolActual !== 'asistente') {
     html += `<h4 style="color: var(--ambar-espera); margin: 20px 0 10px;">Agregar documentos</h4>`;
-    html += `<button class="btn-primary" onclick="abrirModalDocsDisponibles('${idTarea}')">
+    html += `<button class="btn-primary" onclick="abrirModalDocsDisponibles('${esc(idTarea)}')">
         + Seleccionar documentos disponibles
     </button>`;
 }
@@ -1064,14 +1108,14 @@ window.abrirModalDocsDisponibles = async function(idTarea) {
             listaDocs.innerHTML += `
                 <div class="doc-item" style="margin-bottom: 8px;">
                     <div>
-                        <h4>${documento.nombre_archivo}</h4>
+                        <h4>${esc(documento.nombre_archivo)}</h4>
                         <p style="color: var(--text-muted); font-size: 0.85rem;">
-                            ${documento.categoria} | ${documento.fecha_subida}
+                            ${esc(documento.categoria)} | ${esc(documento.fecha_subida)}
                         </p>
                     </div>
                     <button class="btn-action btn-agregar-doc" 
-                        data-doc-id="${docSnap.id}" 
-                        data-tarea-id="${idTarea}">
+                        data-doc-id="${esc(docSnap.id)}" 
+                        data-tarea-id="${esc(idTarea)}">
                         Agregar
                     </button>
                 </div>
@@ -1146,11 +1190,11 @@ window.abrirChat = function() {
         sugerencias.innerHTML = '';
         filtrados.forEach(nombre => {
             sugerencias.innerHTML += `
-                <div onclick="insertarMencion('${nombre}')" 
+ <div data-mencion="${esc(nombre)}" onclick="insertarMencion(this.dataset.mencion)" 
                     style="padding: 8px 12px; cursor: pointer; font-size: 0.85rem; color: var(--text-main);"
                     onmouseover="this.style.background='var(--bg-hover)'"
                     onmouseout="this.style.background='none'">
-                    @${nombre}
+                    @${esc(nombre)}
                 </div>
             `;
         });
@@ -1175,12 +1219,12 @@ inputMensaje.addEventListener('keydown', (e) => {
             listaMensajes.innerHTML += `
                 <div style="display: flex; flex-direction: column; align-items: ${esMio ? 'flex-end' : 'flex-start'};">
                     <span style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 3px;">
-                        ${esMio ? 'Vos' : msg.nombre_display} · ${msg.rol}
+                        ${esMio ? 'Vos' : esc(msg.nombre_display)} · ${esc(msg.rol)}
                     </span>
                    <div style="background: ${esMio ? 'var(--bg-hover)' : 'var(--bg-panel)'}; 
             color: var(--text-main); 
             padding: 8px 12px; border-radius: 8px; max-width: 85%; font-size: 0.85rem;">
-                        ${msg.texto.replace(/@(\w+\s?\w+)/g, '<span style="color: var(--ambar-espera); font-weight: 500;">@$1</span>')}
+                        ${esc(msg.texto).replace(/@(\w+\s?\w+)/g, '<span style="color: var(--ambar-espera); font-weight: 500;">@$1</span>')}
                     </div>
                 </div>
             `;
