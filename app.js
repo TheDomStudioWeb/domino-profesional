@@ -101,7 +101,12 @@ btnCloseModal.addEventListener('click', () => modal.style.display = 'none');
 
 const hamburger = document.getElementById('hamburger');
 const menu = document.getElementById('menu');
-hamburger.addEventListener('click', () => menu.classList.toggle('show'));
+function cerrarMenuMovil() { menu.classList.remove('show'); hamburger.setAttribute('aria-expanded', 'false'); hamburger.textContent = '☰'; document.body.classList.remove('menu-abierto'); }
+function abrirMenuMovil() { window.scrollTo(0, 0); menu.classList.add('show'); hamburger.setAttribute('aria-expanded', 'true'); hamburger.textContent = '✕'; document.body.classList.add('menu-abierto'); }
+hamburger.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.contains('show') ? cerrarMenuMovil() : abrirMenuMovil(); });
+document.getElementById('menu-cerrar').addEventListener('click', cerrarMenuMovil);
+menu.addEventListener('click', (e) => { if (e.target.closest('a')) cerrarMenuMovil(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menu.classList.contains('show')) cerrarMenuMovil(); });
 
 
 // =========================================
@@ -659,7 +664,7 @@ window.actualizarKPIs = actualizarKPIs;
 async function iniciarApp() {
     onAuthStateChanged(auth, async (usuario) => {
         if (!usuario) {
-            window.location.href = 'login.html';
+            window.location.replace('login.html');
             return;
         }
         
@@ -669,7 +674,7 @@ async function iniciarApp() {
         if (userSnap.empty) {
             alert("Usuario sin perfil asignado. Contacte al administrador.");
             await signOut(auth);
-            window.location.href = 'login.html';
+            window.location.replace('login.html');
             return;
         }
 
@@ -677,7 +682,7 @@ async function iniciarApp() {
         if (perfil.activo === false) {
             alert("Tu acceso está dado de baja. Contactá al responsable del estudio.");
             await signOut(auth);
-            window.location.href = 'login.html';
+            window.location.replace('login.html');
             return;
         }
         const rolUsuario = perfil.rol_jerarquia;
@@ -699,6 +704,7 @@ async function iniciarApp() {
         window.DOMINO.listo = true;
         window.dispatchEvent(new Event('domino:listo'));
         navegarA('hub');
+        if (window.activarAtras && !window.__atrasOn) { window.__atrasOn = true; window.activarAtras(volverAtras); }
     });
 }
 
@@ -956,10 +962,25 @@ function mostrarVista(nombre) {
     // En el menú se resalta la sección a la que pertenece la vista
     const grupo = { expediente: 'expedientes', buzon: 'expedientes', cartera: 'expedientes', herramientas: 'hub', equipo: 'hub' }[nombre] || nombre;
     document.querySelectorAll('#menu a').forEach((a) => a.classList.toggle('active', a.dataset.vista === grupo));
-    document.getElementById('menu').classList.remove('show');
+    cerrarMenuMovil();
     window.scrollTo(0, volverAlHub ? hubScroll : 0);
     if (volverAlHub) [150, 500].forEach((ms) => setTimeout(() => { if (vistaActual === 'hub') window.scrollTo(0, hubScroll); }, ms));
     window.dispatchEvent(new CustomEvent('domino:vista', { detail: nombre }));
+}
+
+// "Atrás" del teléfono: hace lo mismo que el botón Volver de la pantalla en la que se está
+function volverAtras() {
+    const abiertos = [...document.querySelectorAll('.modal')].filter((m) => getComputedStyle(m).display !== 'none');
+    if (abiertos.length) { abiertos.forEach((m) => { m.style.display = 'none'; }); return true; }
+    if (menu.classList.contains('show')) { cerrarMenuMovil(); return true; }
+    if (document.getElementById('panel-chat').style.display === 'flex') { cerrarChat(); return true; }
+    switch (vistaActual) {
+        case 'hub': return false;
+        case 'buzon': mostrarVista('expediente'); return true;
+        case 'expediente': btnVolver.click(); return true;
+        case 'cartera': navegarA('expedientes'); return true;
+        default: navegarA('hub'); return true;
+    }
 }
 
 window.navegarA = function(seccion) {
@@ -975,7 +996,7 @@ window.navegarA = function(seccion) {
 window.cerrarSesion = async function() {
     if (confirm("¿Estás seguro que querés cerrar sesión?")) {
         await signOut(auth);
-        window.location.href = 'login.html';
+        window.location.replace('login.html');
     }
 }
 
@@ -1318,7 +1339,7 @@ window.cerrarChat = function() {
         unsubscribeChat = null;
     }
     document.getElementById('panel-chat').style.display = 'none';
-    document.getElementById('menu').style.display = 'block';
+    document.getElementById('menu').style.display = '';
 
     // En mobile restauramos el main
     if (window.innerWidth <= 768) {

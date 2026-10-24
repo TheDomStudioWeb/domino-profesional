@@ -1,0 +1,36 @@
+from run import session
+R={}
+def ok(n,c): R[n]=bool(c)
+def steps(pg,out):
+    pg.set_default_timeout(4000)
+    vis=lambda: pg.evaluate("getComputedStyle(document.getElementById('menu')).display")
+    pg.click('#hamburger'); pg.wait_for_timeout(200); ok('abre', vis()=='flex'); pg.screenshot(path=out+'/t_menu_movil.png')
+    pg.click('#hamburger'); pg.wait_for_timeout(200); ok('cierra_con_rayitas', vis()=='none')
+    pg.click('#hamburger'); pg.click('#menu-cerrar'); pg.wait_for_timeout(200); ok('cierra_con_boton', vis()=='none')
+    pg.click('#hamburger'); pg.click('#nav-calendario'); pg.wait_for_timeout(300); ok('cierra_al_elegir', vis()=='none' and pg.is_visible('#vista-calendario'))
+    # chat y luego menú (el chat dejaba el menú trabado)
+    pg.click('#hamburger'); pg.click('#nav-chat'); pg.wait_for_timeout(300); pg.click('#panel-chat >> text=Volver'); pg.wait_for_timeout(200)
+    ok('menu_tras_chat_cerrado', vis()=='none'); pg.click('#hamburger'); pg.wait_for_timeout(150); ok('menu_tras_chat_abre', vis()=='flex'); pg.click('#hamburger'); pg.wait_for_timeout(150); ok('menu_tras_chat_cierra', vis()=='none')
+    # botón atrás del teléfono
+    pg.evaluate("navegarA('hub')"); pg.wait_for_timeout(300)
+    pg.evaluate("navegarA('calendario')"); pg.wait_for_timeout(300)
+    pg.go_back(); pg.wait_for_timeout(400); ok('atras_calendario_a_inicio', pg.is_visible('#vista-hub') and 'localhost' in pg.url)
+    pg.fill('#hub-q','alfa'); pg.press('#hub-q','Enter'); pg.wait_for_timeout(500); ok('en_expediente', pg.is_visible('#vista-expediente'))
+    pg.click('#vista-expediente >> text=Buzón documental'); pg.wait_for_timeout(400); ok('en_buzon', pg.is_visible('#vista-buzon'))
+    pg.go_back(); pg.wait_for_timeout(400); ok('atras_buzon_a_expediente', pg.is_visible('#vista-expediente'))
+    pg.go_back(); pg.wait_for_timeout(400); ok('atras_expediente_sale_a_lista', pg.is_visible('#vista-expedientes') or pg.is_visible('#vista-hub'))
+    pg.evaluate("navegarA('hub')"); pg.click('.res-card:has-text("Documentos")'); pg.wait_for_timeout(900); ok('modal_abierto', pg.is_visible('#modal-docs-pendientes'))
+    pg.go_back(); pg.wait_for_timeout(300); ok('atras_cierra_modal', pg.is_hidden('#modal-docs-pendientes') and pg.is_visible('#vista-hub'))
+    pg.go_back(); pg.wait_for_timeout(300); ok('atras_en_inicio_avisa', 'otra vez' in pg.inner_text('#toast-atras') and pg.url.endswith('index.html'))
+    # herramientas: limpiar
+    pg.click('.tile:has-text("Validador de CUIT")'); pg.wait_for_timeout(300)
+    h="(()=>{const c=document.getElementById('hoja-canvas');return c.toDataURL().length})()"; antes=pg.evaluate(h)
+    pg.set_input_files('#hoja-frente','/home/claude/domino-profesional/imagenes/logo.png'); pg.wait_for_timeout(300)
+    ok('hoja_cargada', pg.evaluate("document.getElementById('hoja-frente').files.length")==1)
+    pg.click('#hoja-limpiar'); pg.wait_for_timeout(300)
+    ok('hoja_limpia', pg.evaluate("document.getElementById('hoja-frente').files.length")==0)
+    ok('canvas_como_al_inicio', pg.evaluate(h)==antes)
+if __name__=='__main__':
+    log=session('.',8801,steps=steps,w=390,h=800)
+    for k,v in R.items(): print(('OK   ' if v is True else 'FAIL ' if v is False else '     ')+k)
+    print([l for l in log if 'PAGEERROR' in l])

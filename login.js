@@ -32,7 +32,7 @@ document.getElementById('btn-login').addEventListener('click', async () => {
 
         await setPersistence(auth, browserLocalPersistence);
         await signInWithEmailAndPassword(auth, email, password);
-        window.location.href = 'index.html';
+        window.location.replace('index.html');
 
     } catch (error) {
         btnLogin.innerText = "Ingresar";

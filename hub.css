@@ -148,3 +148,13 @@ input,select{border-radius:2px}
 /* Aviso breve */
 .toast-dom{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);max-width:min(92vw,560px);padding:14px 20px;border-radius:8px;background:#16181c;color:#f4f1ea;border:1px solid #4cc38a;box-shadow:0 10px 30px rgba(0,0,0,.6);font:500 .95rem/1.4 Montserrat,sans-serif;opacity:0;pointer-events:none;transition:.3s;z-index:3000}
 .toast-dom.error{border-color:#ff6b61}.toast-dom.show{opacity:1;transform:translate(-50%,0)}
+
+/* Menú del celular: panel que ocupa la pantalla, con botón grande para cerrar */
+.menu-cerrar{display:none}
+@media (max-width:768px){
+  .brand-wrapper{position:relative;z-index:2100;background:var(--bg-base)}
+  .menu.show{position:fixed;inset:0;z-index:2000;background:var(--bg-base);padding:88px 20px 28px;overflow-y:auto;margin:0}
+  .menu.show .menu-cerrar{display:block;width:100%;margin-bottom:14px;padding:16px;font:700 1rem Montserrat,sans-serif;letter-spacing:.06em;background:var(--gold);color:var(--on-gold,#0a0a0a);border:0;border-radius:6px}
+  .menu.show a{padding:16px 15px;font-size:1.05rem}
+  body.menu-abierto{overflow:hidden}
+}

@@ -22,7 +22,7 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 window.cerrarSesionCliente = async function() {
     if (confirm("¿Estás seguro que querés cerrar sesión?")) {
         await signOut(auth);
-        window.location.href = 'login-cliente.html';
+        window.location.replace('login-cliente.html');
     }
 }
 
@@ -71,7 +71,7 @@ async function cargarEmpresasCliente(usuarioId) {
 
 onAuthStateChanged(auth, async (usuario) => {
     if (!usuario) {
-        window.location.href = 'login-cliente.html';
+        window.location.replace('login-cliente.html');
         return;
     }
     const usuarioId = usuario.email;

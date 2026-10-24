@@ -27,6 +27,7 @@
     </div>
 
     <nav class="menu" id="menu">
+        <button type="button" class="menu-cerrar" id="menu-cerrar">✕ Cerrar menú</button>
         <a href="#" id="nav-hub" class="active" data-vista="hub" onclick="event.preventDefault(); navegarA('hub')">Inicio</a>
         <a href="#" id="nav-expedientes" data-vista="expedientes" data-roles="senior,midsenior" onclick="event.preventDefault(); navegarA('expedientes')">Clientes</a>
         <a href="#" id="nav-kanban" data-vista="kanban" data-roles="senior,midsenior" onclick="event.preventDefault(); navegarA('kanban')">Tareas</a>
@@ -459,6 +460,7 @@
             <div class="seg">
                 <button type="button" class="btn-primary" id="hoja-descargar">Guardar imagen</button>
                 <button type="button" class="btn-secundario" id="hoja-imprimir">Imprimir</button>
+                <button type="button" class="btn-baja" id="hoja-limpiar">Limpiar imágenes</button>
             </div>
         </section>
     </div>
@@ -485,6 +487,7 @@
 <footer class="firma">Desarrollado por The DOM Studio Web · WhatsApp 261-3431216 · thedomstudioweb@gmail.com</footer>
 </main>
 </div>
+    <script src="atras.js"></script>
     <script type="module" src="app.js"></script>
     <script type="module" src="hub.js"></script>
     <script>

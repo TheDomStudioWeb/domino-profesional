@@ -399,6 +399,10 @@ function dibujarHoja() {
 async function leerHoja(que, file) { if (!file) { hoja[que] = null; } else { try { hoja[que] = await cargarImg(file); } catch (e) { hoja[que] = null; } } dibujarHoja(); }
 $('hoja-frente').addEventListener('change', (e) => leerHoja('frente', e.target.files[0]));
 $('hoja-dorso').addEventListener('change', (e) => leerHoja('dorso', e.target.files[0]));
+$('hoja-limpiar').addEventListener('click', () => {
+  hoja.frente = null; hoja.dorso = null; $('hoja-frente').value = ''; $('hoja-dorso').value = ''; dibujarHoja();
+  if (D() && D().aviso) D().aviso('Listo: se limpiaron las imágenes.');
+});
 $('hoja-descargar').addEventListener('click', () => {
   if (!hoja.frente && !hoja.dorso) { alert('Elegí al menos una imagen.'); return; }
   $('hoja-canvas').toBlob((b) => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'hoja-unificada-A4.png'; document.body.appendChild(a); a.click(); a.remove(); }, 'image/png');
