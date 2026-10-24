@@ -827,7 +827,25 @@ console.error(error);
 }  
 });
 
+// Filtro opcional de tareas (desde las tarjetas de Inicio): 'vencidas' | null
+window.filtroTareas = null;
+function hoyISO() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+function pasaFiltro(t) {
+    if (window.filtroTareas !== 'vencidas') return true;
+    return t.estado !== 'Proceso Completo/Finalizado' && !!t.vencimiento && t.vencimiento < hoyISO();
+}
+function pintarBannerFiltro() {
+    ['kanban', 'mis-tareas'].forEach((v) => {
+        const b = document.getElementById('filtro-banner-' + v);
+        if (!b) return;
+        b.hidden = window.filtroTareas !== 'vencidas';
+    });
+}
+window.quitarFiltroTareas = function() { window.filtroTareas = null; pintarBannerFiltro(); if (vistaActual === 'kanban') cargarKanban(); else cargarMisTareas(window.nombreDisplay); };
+window.verVencidas = function() { window.filtroTareas = 'vencidas'; navegarA(window.rolActual === 'asistente' ? 'mis-tareas' : 'kanban'); };
+
 async function cargarKanban() {
+    pintarBannerFiltro();
     const columnas = {
         "Pendiente de Procesar": document.getElementById('cards-pendiente'),
         "Pendiente": document.getElementById('cards-pendiente'),
@@ -848,7 +866,7 @@ async function cargarKanban() {
         querySnapshot.forEach((taskDoc) => {
             const tarea = taskDoc.data();
             const columna = columnas[tarea.estado];
-            if (!columna) return;
+            if (!columna || !pasaFiltro(tarea)) return;
             
             const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
             
@@ -871,7 +889,11 @@ async function cargarKanban() {
 
 const VISTAS = ['hub', 'cartera', 'expedientes', 'expediente', 'buzon', 'kanban', 'mis-tareas', 'calendario', 'herramientas', 'equipo'];
 
+let hubScroll = 0;
 function mostrarVista(nombre) {
+    if (vistaActual === 'hub' && nombre !== 'hub') hubScroll = window.scrollY;
+    if (nombre !== 'kanban' && nombre !== 'mis-tareas') window.filtroTareas = null;
+    const volverAlHub = nombre === 'hub' && vistaActual && vistaActual !== 'hub';
     vistaActual = nombre;
     VISTAS.forEach((v) => {
         const el = document.getElementById('vista-' + v);
@@ -881,7 +903,8 @@ function mostrarVista(nombre) {
     const grupo = { expediente: 'expedientes', buzon: 'expedientes', cartera: 'expedientes', herramientas: 'hub', equipo: 'hub' }[nombre] || nombre;
     document.querySelectorAll('#menu a').forEach((a) => a.classList.toggle('active', a.dataset.vista === grupo));
     document.getElementById('menu').classList.remove('show');
-    window.scrollTo(0, 0);
+    window.scrollTo(0, volverAlHub ? hubScroll : 0);
+    if (volverAlHub) [150, 500].forEach((ms) => setTimeout(() => { if (vistaActual === 'hub') window.scrollTo(0, hubScroll); }, ms));
     window.dispatchEvent(new CustomEvent('domino:vista', { detail: nombre }));
 }
 
@@ -910,6 +933,7 @@ setInterval(() => {
 }, 10 * 60 * 1000);
 
 async function cargarMisTareas(nombreAsistente) {
+    pintarBannerFiltro();
     const columnas = {
         "Pendiente de Procesar": document.getElementById('mis-tareas-pendiente'),
         "Pendiente": document.getElementById('mis-tareas-pendiente'),
@@ -940,7 +964,7 @@ async function cargarMisTareas(nombreAsistente) {
         querySnapshot.forEach((taskDoc) => {
             const tarea = taskDoc.data();
             const columna = columnas[tarea.estado];
-            if (!columna) return;
+            if (!columna || !pasaFiltro(tarea)) return;
             
             const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
             
@@ -1308,3 +1332,12 @@ async function iniciarBadgeChat() {
 }
 
 iniciarApp();
+
+// Ventanas flotantes: se cierran con Esc o tocando afuera
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.modal').forEach((m) => { if (getComputedStyle(m).display !== 'none') m.style.display = 'none'; });
+});
+document.addEventListener('click', (e) => {
+    if (e.target.classList && e.target.classList.contains('modal')) e.target.style.display = 'none';
+});

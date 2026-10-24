@@ -108,7 +108,7 @@ async function renderHub() {
 function renderResumen(r) {
   const rol = D().rol;
   const items = [
-    { n: r.vencidas, t: 'Vencidas', cls: 'text-rojo', go: "navegarA('calendario')" },
+    { n: r.vencidas, t: 'Vencidas', cls: 'text-rojo', go: "verVencidas()" },
     { n: r.hoy, t: 'Vencen hoy', cls: 'text-ambar', go: "navegarA('calendario')" },
     { n: r.proceso, t: 'En proceso', cls: 'text-ambar', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` }
   ];
@@ -138,13 +138,14 @@ function renderGrupos() {
   $('hub-grupos').innerHTML = GRUPOS.map((g, gi) => {
     const items = g.items.filter((i) => i.roles.includes(rol));
     if (!items.length) return '';
-    return `<section class="hub-grupo"><h2>${esc(g.titulo)}</h2><div class="tiles">${items.map((i, ii) => `
+    return `<section class="hub-grupo" id="hub-g-${gi}"><h2>${esc(g.titulo)}</h2><div class="tiles">${items.map((i, ii) => `
       <button type="button" class="tile" data-g="${gi}" data-i="${g.items.indexOf(i)}">
         <span class="tile-ic">${icono(i.k)}</span>
         <span class="tile-tx"><b>${esc(i.t)}</b><small>${esc(i.d)}</small></span>
         <span class="tile-badge" data-badge="${i.badge || ''}" hidden></span>
       </button>`).join('')}</div></section>`;
   }).join('');
+  $('hub-atajos').innerHTML = GRUPOS.map((g, gi) => g.items.some((i) => i.roles.includes(rol)) ? `<button type="button" class="atajo" data-ir="hub-g-${gi}">${esc(g.titulo)}</button>` : '').join('');
   refrescarBadges();
 }
 function refrescarBadges() {
@@ -389,3 +390,10 @@ function buscarEnInicio() {
 }
 $('hub-q').addEventListener('input', buscarEnInicio);
 $('hub-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = document.querySelector('#hub-q-res [data-act="expediente"]'); if (b) b.click(); } });
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-ir]');
+  if (!b) return;
+  const el = document.getElementById(b.dataset.ir);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});

@@ -61,11 +61,13 @@ def seed(rol='senior'):
               {'id':'t2','data':{'cliente_id':'c1','titulo':'Balance trimestral','vencimiento':d(10),'responsable':'Asistente 1','estado':'En Proceso'}},
               {'id':'t3','data':{'cliente_id':'c2','titulo':'Sueldos octubre','vencimiento':d(3),'responsable':'Asistente 1','estado':'En Revisión'}},
               {'id':'t4','data':{'cliente_id':'c2','titulo':'Alta de empleado','vencimiento':d(-2),'responsable':'Sueldos','estado':'Proceso Completo/Finalizado'}},
-              {'id':'t5','data':{'cliente_id':'c1','titulo':'Ganancias anticipo','vencimiento':d(0),'responsable':'Contador','estado':'Solicitar Información'}}],
+              {'id':'t5','data':{'cliente_id':'c1','titulo':'Ganancias anticipo','vencimiento':d(0),'responsable':'Profesional','estado':'Solicitar Información'}},
+              {'id':'t6','data':{'cliente_id':'c2','titulo':'Retenciones atrasadas','vencimiento':d(-4),'responsable':'Asistente 1','estado':'En Proceso'}}],
      'documents':[{'id':'d1','data':{'cliente_id':'c1','categoria':'Impuestos','nombre_archivo':'factura_octubre.pdf','fecha_subida':today.strftime('%d/%m/%Y'),'estado':'Pendiente de Procesar','url_descarga':'https://example.test/f1?x=1'}},
                   {'id':'d2','data':{'cliente_id':'c1','categoria':'RRHH','nombre_archivo':'alta_empleado.pdf','fecha_subida':today.strftime('%d/%m/%Y'),'estado':'Pendiente de Procesar','tarea_id':'t3','url_descarga':'https://example.test/f2?x=1'}},
+                  *[{'id':'dx%d'%i,'data':{'cliente_id':'c1','categoria':'Impuestos','nombre_archivo':'extra_%d.pdf'%i,'fecha_subida':'01/10/2026','estado':'Pendiente de Procesar','url_descarga':'https://example.test/x%d'%i}} for i in range(14)],
                   {'id':'d3','data':{'cliente_id':'c2','categoria':'Legal','nombre_archivo':'contrato_social.pdf','fecha_subida':'01/10/2026','estado':'En Revisión'}}],
-     'entregas':[{'id':'e1','data':{'cliente_id':'c1','categoria':'VEP','nombre_archivo':'VEP_septiembre.pdf','fecha_envio':'10/10/2026','url_descarga':'https://example.test/v','enviado_por':'Contador','fecha_timestamp':ts(-5)}}],
+     'entregas':[{'id':'e1','data':{'cliente_id':'c1','categoria':'VEP','nombre_archivo':'VEP_septiembre.pdf','fecha_envio':'10/10/2026','url_descarga':'https://example.test/v','enviado_por':'Profesional','fecha_timestamp':ts(-5)}}],
      'mensajes':[{'id':'m1','data':{'texto':'Buen día equipo, recuerden el vencimiento de IVA.','autor_uid':'otro','nombre_display':'Laura','rol':'midsenior','fecha_timestamp':ts(-1)}}],
     }
     users={'cliente':('u9','cli@alfa.test','Cliente Alfa'),'senior':('u1','daniel@estudio.test','Daniel'),'asistente':('u2','asist@estudio.test','Asistente 1'),'midsenior':('u3','mid@estudio.test','Laura')}
