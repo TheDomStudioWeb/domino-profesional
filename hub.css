@@ -112,3 +112,16 @@ input,select{border-radius:2px}
   .sidebar{position:static}
   .brand-wrapper{margin-bottom:0}
 }
+
+/* Buscador de Inicio */
+.hub-buscar{margin-bottom:22px}
+.hub-buscar[hidden]{display:none}
+.hub-buscar label{display:block;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;font-weight:500}
+.hub-buscar input{width:100%;max-width:560px;padding:14px 16px;background:var(--bg-panel);border:1px solid var(--hairline);color:var(--text-main);font-size:1rem}
+.hub-buscar input:focus{border-color:var(--gold)}
+.hub-q-res{display:grid;gap:8px;margin-top:10px;max-width:760px}
+.q-fila{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--bg-panel);border:1px solid var(--hairline);border-radius:6px;padding:12px 14px}
+.q-txt{display:flex;flex-direction:column;min-width:0}
+.q-txt b{font-family:var(--font-display)}
+.q-txt small{color:var(--text-muted)}
+.q-acc{display:flex;gap:8px}

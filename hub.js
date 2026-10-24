@@ -33,16 +33,13 @@ const icono = (k) => `<svg viewBox="0 0 24 24" width="26" height="26" fill="none
 // ---------------------------------------------------------------
 const GRUPOS = [
   { titulo: 'Gestión del estudio', items: [
-    { k: 'comando', t: 'Centro de Comando', d: 'Indicadores, vencimientos y prioridades de la semana.', roles: ['senior', 'midsenior'], go: () => navegarA('dashboard') },
-    { k: 'cartera', t: 'Mi Cartera', d: 'Clientes activos e inactivos, altas y bajas.', roles: ['senior', 'midsenior'], go: () => navegarA('cartera') },
-    { k: 'expedientes', t: 'Expedientes', d: 'Procesos y documentos de cada empresa.', roles: ['senior', 'midsenior'], go: () => navegarA('expedientes') },
-    { k: 'kanban', t: 'Bandeja Táctica', d: 'Todas las tareas del estudio por estado.', roles: ['senior', 'midsenior'], go: () => navegarA('kanban') },
+    { k: 'expedientes', t: 'Clientes', d: 'Empresas, procesos y documentos. Desde acá también se da de alta o baja a un cliente.', roles: ['senior', 'midsenior'], go: () => navegarA('expedientes') },
+    { k: 'kanban', t: 'Tareas', d: 'Todas las tareas del estudio, por estado.', roles: ['senior', 'midsenior'], go: () => navegarA('kanban') },
     { k: 'tareas', t: 'Mis Tareas', d: 'Lo que tenés asignado, por estado.', roles: ['asistente'], go: () => navegarA('mis-tareas') }
   ]},
   { titulo: 'Documentos', items: [
-    { k: 'buzon', t: 'Buzón documental', d: 'Centralizar lo recibido por mail, papel o WhatsApp.', roles: ['senior', 'midsenior'], go: () => abrirExpedientes('buzon') },
-    { k: 'pendientes', t: 'Documentos pendientes', d: 'Lo que subieron los clientes y falta procesar.', roles: ['senior', 'midsenior'], badge: 'docs', go: () => { navegarA('dashboard'); abrirModalDocsPendientes(); } },
-    { k: 'enviar', t: 'Enviar al cliente', d: 'VEP, balances y recibos para su portal.', roles: ['senior', 'midsenior'], go: () => abrirExpedientes('buzon') },
+    { k: 'buzon', t: 'Buzón documental', d: 'Cargar lo recibido y enviar documentación al cliente.', roles: ['senior', 'midsenior'], go: () => abrirExpedientes('buzon') },
+    { k: 'pendientes', t: 'Documentos pendientes', d: 'Lo que subieron los clientes y falta procesar.', roles: ['senior', 'midsenior'], badge: 'docs', go: () => abrirModalDocsPendientes() },
     { k: 'portal', t: 'Portal del cliente', d: 'Cómo ve y envía documentos su cliente.', roles: ['senior', 'midsenior'], go: () => window.open('portal-cliente.html', '_blank', 'noopener') }
   ]},
   { titulo: 'Plazos y equipo', items: [
@@ -83,6 +80,8 @@ async function tareasAbiertas() {
 
 async function renderHub() {
   const rol = D().rol;
+  $('hub-buscar').hidden = rol === 'asistente';
+  if (rol !== 'asistente') { $('hub-q').value = ''; $('hub-q-res').innerHTML = ''; cargarEmpresas().catch((e) => console.error(e)); }
   const nombre = D().nombre || '';
   $('hub-fecha').innerText = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
   $('hub-saludo').innerText = nombre ? `Hola, ${nombre}` : 'Hub de gestión';
@@ -98,7 +97,7 @@ async function renderHub() {
     const vencidas = abiertas.filter((t) => t.vencimiento && t.vencimiento < hoy);
     const deHoy = abiertas.filter((t) => t.vencimiento === hoy);
     const proximas = abiertas.filter((t) => t.vencimiento && t.vencimiento > hoy && t.vencimiento <= limite);
-    renderResumen({ vencidas: vencidas.length, hoy: deHoy.length, proceso: abiertas.filter((t) => t.estado === 'En Proceso' || t.estado === 'Procesado/Liquidado').length });
+    renderResumen({ listos: tareas.filter((t) => t.estado === ESTADO_FIN).length, vencidas: vencidas.length, hoy: deHoy.length, proceso: abiertas.filter((t) => t.estado === 'En Proceso' || t.estado === 'Procesado/Liquidado').length });
     renderHoy([...vencidas, ...deHoy, ...proximas].sort((a, b) => (a.vencimiento || '').localeCompare(b.vencimiento || '')).slice(0, 8), hoy);
   } catch (e) {
     console.error('Hub: no se pudieron leer las tareas', e);
@@ -113,7 +112,8 @@ function renderResumen(r) {
     { n: r.hoy, t: 'Vencen hoy', cls: 'text-ambar', go: "navegarA('calendario')" },
     { n: r.proceso, t: 'En proceso', cls: 'text-ambar', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` }
   ];
-  if (rol !== 'asistente') items.push({ n: (D().kpis || {}).docsPendientes ?? '–', t: 'Documentos por procesar', cls: 'text-ambar', go: "navegarA('dashboard'); abrirModalDocsPendientes()" });
+  items.push({ n: r.listos, t: rol === 'asistente' ? 'Finalizadas' : 'Balances listos', cls: 'text-verde', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` });
+  if (rol !== 'asistente') items.push({ n: (D().kpis || {}).docsPendientes ?? '–', t: 'Documentos por procesar', cls: 'text-ambar', go: 'abrirModalDocsPendientes()' });
   $('hub-resumen').innerHTML = items.map((i) => `<button type="button" class="res-card" onclick="${i.go}"><span class="numero ${i.cls}">${esc(i.n)}</span><span class="res-t">${esc(i.t)}</span></button>`).join('');
 }
 
@@ -369,3 +369,23 @@ window.addEventListener('domino:vista', (e) => {
   else if (v === 'calendario') renderCalendario();
   else if (v === 'equipo') renderEquipo();
 });
+
+// ---------------------------------------------------------------
+// Buscador de empresa en Inicio: escribir tres letras y entrar directo
+// ---------------------------------------------------------------
+function buscarEnInicio() {
+  const q = $('hub-q').value.toLowerCase().trim();
+  const out = $('hub-q-res');
+  if (q.length < 2) { out.innerHTML = ''; return; }
+  const lista = empresas.filter((e) => e.nombre.toLowerCase().includes(q) || String(e.cuit).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§')).slice(0, 6);
+  out.innerHTML = lista.length ? lista.map((e) => `
+    <div class="q-fila">
+      <div class="q-txt"><b>${esc(e.nombre)}</b><small>CUIT ${esc(e.cuit)} · ${e.abiertas} ${e.abiertas === 1 ? 'proceso abierto' : 'procesos abiertos'}${e.docs ? ` · ${e.docs} por procesar` : ''}</small></div>
+      <div class="q-acc">
+        <button type="button" class="btn-primary" data-act="expediente" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Expediente</button>
+        <button type="button" class="btn-secundario" data-act="buzon" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Buzón</button>
+      </div>
+    </div>`).join('') : '<p class="vacio">No hay empresas activas que coincidan.</p>';
+}
+$('hub-q').addEventListener('input', buscarEnInicio);
+$('hub-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = document.querySelector('#hub-q-res [data-act="expediente"]'); if (b) b.click(); } });

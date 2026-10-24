@@ -15,19 +15,21 @@ DOMino Profesional es el Hub de gestión de un estudio contable o jurídico: ord
 - Saludo y fecha.
 - Cuatro cifras: vencidas, vencen hoy, en proceso y documentos por procesar (tocar una lleva a su detalle).
 - «Para hoy y los próximos días»: hasta 8 tareas abiertas ordenadas por fecha, con la etiqueta Vencida, Hoy o Próxima.
+- **Buscador de empresa** (arriba): escribir 3 letras del nombre o CUIT y tocar «Expediente» o «Buzón» en el resultado. Con Enter abre el expediente de la primera coincidencia. Es el camino más corto para llegar a una empresa.
+- Menú lateral de 5 entradas: Inicio, Clientes, Tareas, Calendario y Chat (el asistente ve Mis Tareas en lugar de Clientes y Tareas).
 - Accesos agrupados: Gestión del estudio, Documentos, Plazos y equipo, Herramientas.
 
 ## Cada función y cómo llegar
 | Función | Para qué sirve | Cómo se llega |
 |---|---|---|
-| Centro de Comando | Indicadores del estudio y prioridades de la semana. Tocar «Documentos pendientes» abre la lista para descargar y pasar a revisión. | Inicio > Centro de Comando |
-| Mi Cartera | Alta de clientes (nombre, CUIT, correo del cliente), activar y desactivar. Filtro: activas, inactivas o todas. | Inicio > Mi Cartera |
-| Expedientes | Elegir una empresa (con buscador por nombre o CUIT) y ver sus procesos. Muestra cuántos procesos abiertos y documentos por procesar tiene cada una. | Inicio > Expedientes |
+| Indicadores y prioridades | Las cifras y la lista de Inicio reemplazan al antiguo Centro de Comando. Tocar «Documentos pendientes» abre la lista para descargar y pasar a revisión. | Inicio |
+| Mi Cartera | Alta de clientes (nombre, CUIT, correo del cliente), activar y desactivar. Filtro: activas, inactivas o todas. | Clientes > Administrar cartera |
+| Expedientes | Elegir una empresa (con buscador por nombre o CUIT) y ver sus procesos. Muestra cuántos procesos abiertos y documentos por procesar tiene cada una. | Menú > Clientes |
 | Expediente de una empresa | Procesos activos; «+ Asignar Tarea» (descripción, vencimiento, área); cambiar el estado de cada tarea; ver documentos de la tarea. | Expedientes > empresa |
 | Buzón documental | Cargar documentos recibidos por otros medios (se guarda el archivo), enviar documentación al cliente (VEP, balance, recibo, comunicación) y ver el historial con filtros por fecha, área, estado y asignación. Se puede asignar cada documento a una tarea. | Inicio > Buzón documental, o desde el expediente |
-| Bandeja Táctica | Todas las tareas del estudio en columnas por estado. | Inicio > Bandeja Táctica |
+| Bandeja Táctica | Todas las tareas del estudio en columnas por estado. | Menú > Tareas |
 | Mis Tareas | Lo asignado a cada asistente, por estado. | Inicio > Mis Tareas |
-| Calendario | Vencimientos del mes, día por día; tocar un día muestra sus tareas. | Inicio > Calendario |
+| Calendario | Vencimientos del mes, día por día; tocar un día muestra sus tareas. | Menú > Calendario |
 | Chat interno | Mensajes del equipo con menciones (@nombre). El Senior puede limpiar el historial. | Inicio > Chat interno |
 | Equipo | Lista de personas con acceso y su nivel (solo Senior). | Inicio > Equipo |
 | Portal del cliente | Pantalla del cliente para subir documentos y descargar lo que le envió el estudio. | Inicio > Portal del cliente |

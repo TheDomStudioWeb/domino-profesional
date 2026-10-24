@@ -637,7 +637,7 @@ async function iniciarApp() {
         // Primero el cache de empresas (lo usan tareas y prioridades), después el resto
         await cargarCacheClientes();
         if (rolUsuario !== 'asistente') {
-            await Promise.all([cargarClientes(selectorContador.value), actualizarKPIs(), cargarPrioridades()]);
+            await Promise.all([cargarClientes(selectorContador.value), actualizarKPIs()]);
         } else {
             await cargarMisTareas(window.nombreDisplay);
         }
@@ -717,6 +717,7 @@ for (const docSnap of querySnapshot.docs) {
 // =========================================
 window.cargarPrioridades = async function() {
     const listaPrioridades = document.getElementById('lista-prioridades');
+    if (!listaPrioridades) return; // las prioridades ahora se muestran en Inicio
     listaPrioridades.innerHTML = '';
 
     try {
@@ -868,7 +869,7 @@ async function cargarKanban() {
     }
 }
 
-const VISTAS = ['hub', 'dashboard', 'cartera', 'expedientes', 'expediente', 'buzon', 'kanban', 'mis-tareas', 'calendario', 'herramientas', 'equipo'];
+const VISTAS = ['hub', 'cartera', 'expedientes', 'expediente', 'buzon', 'kanban', 'mis-tareas', 'calendario', 'herramientas', 'equipo'];
 
 function mostrarVista(nombre) {
     vistaActual = nombre;
@@ -877,7 +878,7 @@ function mostrarVista(nombre) {
         if (el) el.style.display = v === nombre ? 'block' : 'none';
     });
     // En el menú se resalta la sección a la que pertenece la vista
-    const grupo = { expediente: 'expedientes', buzon: 'expedientes' }[nombre] || nombre;
+    const grupo = { expediente: 'expedientes', buzon: 'expedientes', cartera: 'expedientes', herramientas: 'hub', equipo: 'hub' }[nombre] || nombre;
     document.querySelectorAll('#menu a').forEach((a) => a.classList.toggle('active', a.dataset.vista === grupo));
     document.getElementById('menu').classList.remove('show');
     window.scrollTo(0, 0);
@@ -885,12 +886,12 @@ function mostrarVista(nombre) {
 }
 
 window.navegarA = function(seccion) {
-    if (window.rolActual === 'asistente' && ['dashboard', 'cartera', 'expedientes', 'kanban', 'equipo'].includes(seccion)) seccion = 'mis-tareas';
+    if (seccion === 'dashboard') seccion = 'hub'; // el Centro de Comando ahora vive en Inicio
+    if (window.rolActual === 'asistente' && ['cartera', 'expedientes', 'kanban', 'equipo'].includes(seccion)) seccion = 'mis-tareas';
     if (window.rolActual && window.rolActual !== 'senior' && seccion === 'equipo') seccion = 'hub';
     if (document.getElementById('panel-chat').style.display === 'flex') cerrarChat();
     mostrarVista(seccion);
-    if (seccion === 'dashboard') { actualizarKPIs(); cargarPrioridades(); }
-    else if (seccion === 'cartera') cargarClientes(selectorContador.value);
+    if (seccion === 'cartera') cargarClientes(selectorContador.value);
     else if (seccion === 'kanban') cargarKanban();
     else if (seccion === 'mis-tareas') cargarMisTareas(window.nombreDisplay);
 }
@@ -905,7 +906,6 @@ window.cerrarSesion = async function() {
 setInterval(() => {
     if (window.rolActual && window.rolActual !== 'asistente') {
         actualizarKPIs();
-        cargarPrioridades();
     }
 }, 10 * 60 * 1000);
 
