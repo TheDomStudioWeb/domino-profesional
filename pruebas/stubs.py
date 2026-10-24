@@ -25,6 +25,7 @@ export const getDoc=async r=>{const d=(S[r.__c]||[]).find(x=>x.id===r.id);return
 const ser=o=>JSON.parse(JSON.stringify(o,(k,v)=>v instanceof Timestamp?{__ts:v.ms}:v));
 export const addDoc=async(c,data)=>{const id='n'+(_n++);(S[c.__c]=S[c.__c]||[]).push({id,data:ser(data)});save();notify(c.__c);return{id}};
 export const updateDoc=async(r,data)=>{const d=S[r.__c].find(x=>x.id===r.id);Object.assign(d.data,ser(data));save();notify(r.__c)};
+export const setDoc=async(r,data)=>{S[r.__c]=S[r.__c]||[];const d=S[r.__c].find(x=>x.id===r.id);if(d)d.data=ser(data);else S[r.__c].push({id:r.id,data:ser(data)});save();notify(r.__c)};
 export const deleteDoc=async r=>{S[r.__c]=S[r.__c].filter(x=>x.id!==r.id);save();notify(r.__c)};
 const subs=[];const notify=c=>subs.filter(s=>s.q.__c===c).forEach(s=>s.f(mk(run(s.q).map(x=>({id:x.id,data:()=>fix(x.data())})))));
 export const onSnapshot=(q,f)=>{const s={q,f};subs.push(s);setTimeout(()=>f(mk(run(q).map(x=>({id:x.id,data:()=>fix(x.data())})))),0);return()=>{subs.splice(subs.indexOf(s),1)}};
@@ -69,8 +70,11 @@ def seed(rol='senior'):
                   *[{'id':'dx%d'%i,'data':{'cliente_id':'c1','categoria':'Impuestos','nombre_archivo':'extra_%d.pdf'%i,'fecha_subida':'01/10/2026','estado':'Pendiente de Procesar','url_descarga':'https://example.test/x%d'%i}} for i in range(14)],
                   {'id':'d3','data':{'cliente_id':'c2','categoria':'Legal','nombre_archivo':'contrato_social.pdf','fecha_subida':'01/10/2026','estado':'En Revisión'}}],
      'entregas':[{'id':'e1','data':{'cliente_id':'c1','categoria':'VEP','nombre_archivo':'VEP_septiembre.pdf','fecha_envio':'10/10/2026','url_descarga':'https://example.test/v','enviado_por':'Profesional','fecha_timestamp':ts(-5)}}],
+     'accesos_portal':[{'id':'emp@alfa.test__c1','data':{'email':'emp@alfa.test','nombre':'Empleado Uno','cliente_id':'c1','puede_subir':True,'puede_descargar':False,'activo':True}},
+                       {'id':'emp@alfa.test__c3','data':{'email':'emp@alfa.test','nombre':'Empleado Uno','cliente_id':'c3','puede_subir':False,'puede_descargar':True,'activo':True}},
+                       {'id':'emp@alfa.test__c2','data':{'email':'emp@alfa.test','nombre':'Empleado Uno','cliente_id':'c2','puede_subir':True,'puede_descargar':True,'activo':False}}],
      'mensajes':[{'id':'m1','data':{'texto':'Buen día equipo, recuerden el vencimiento de IVA.','autor_uid':'otro','nombre_display':'Laura','rol':'midsenior','fecha_timestamp':ts(-1)}}],
     }
-    users={'cliente':('u9','cli@alfa.test','Cliente Alfa'),'senior':('u1','daniel@estudio.test','Daniel'),'asistente':('u2','asist@estudio.test','Asistente 1'),'midsenior':('u3','mid@estudio.test','Laura')}
+    users={'cliente':('u9','cli@alfa.test','Cliente Alfa'),'empleado':('u10','emp@alfa.test','Empleado Uno'),'senior':('u1','daniel@estudio.test','Daniel'),'asistente':('u2','asist@estudio.test','Asistente 1'),'midsenior':('u3','mid@estudio.test','Laura')}
     uid,email,name=users[rol]
     return S,{'uid':uid,'email':email,'displayName':name}

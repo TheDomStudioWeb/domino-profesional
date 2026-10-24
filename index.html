@@ -387,6 +387,27 @@
     </div>
 </div>
 
+<div class="modal" id="modal-accesos">
+    <div class="modal-content" style="width: 95%; max-width: 720px;">
+        <span class="close-modal" id="close-modal-accesos">&times;</span>
+        <h3 id="titulo-accesos">Accesos al portal</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Quiénes de esta empresa entran al portal y qué puede hacer cada uno. El titular (el correo de la ficha) siempre tiene todos los permisos.</p>
+        <div id="lista-accesos" style="margin-top: 16px;"></div>
+        <form id="form-acceso" class="eq-alta" style="margin-top: 18px;">
+            <h3>Agregar una persona de la empresa</h3>
+            <div class="eq-alta-campos">
+                <label>Nombre<input id="acc-nombre" required autocomplete="off" placeholder="Nombre y apellido"></label>
+                <label>Correo<input id="acc-email" type="email" required autocomplete="off" placeholder="correo@ejemplo.com"></label>
+            </div>
+            <div class="acc-perm" style="margin-bottom: 14px;">
+                <label><input type="checkbox" id="acc-subir" checked> Puede enviar documentos al estudio</label>
+                <label><input type="checkbox" id="acc-descargar"> Puede ver y descargar lo que entrega el estudio</label>
+            </div>
+            <button type="submit" class="btn-primary">Agregar y enviar acceso</button>
+        </form>
+    </div>
+</div>
+
 <div class="modal" id="modal-docs-disponibles">
     <div class="modal-content" style="width: 95%; max-width: 800px; max-height: 90vh; overflow-y: auto;">
         <span class="close-modal" id="close-modal-docs-disponibles">&times;</span>

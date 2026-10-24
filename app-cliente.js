@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { getAuth, onAuthStateChanged,signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -26,27 +26,65 @@ window.cerrarSesionCliente = async function() {
     }
 }
 
+// Permisos por empresa: el titular (usuario_id de la ficha) lo puede todo; las demás personas de la empresa
+// entran por accesos_portal con permisos propios (enviar documentos / ver y descargar lo entregado).
+const PERMISOS = {};
+let ID_CLIENTE = null;
+
+function aplicarPermisos() {
+    const p = PERMISOS[ID_CLIENTE] || { subir: false, descargar: false };
+    const cardSubir = document.querySelector('.upload-card');
+    if (cardSubir) cardSubir.style.display = p.subir ? '' : 'none';
+    const bloque = document.getElementById('bloque-entregas');
+    if (bloque) bloque.style.display = p.descargar ? '' : 'none';
+    const aviso = document.getElementById('aviso-permisos');
+    if (aviso) {
+        const faltan = [];
+        if (!p.subir) faltan.push('enviar documentos');
+        if (!p.descargar) faltan.push('ver lo que entrega el estudio');
+        aviso.style.display = faltan.length ? 'block' : 'none';
+        aviso.textContent = faltan.length ? 'Su usuario no tiene habilitado: ' + faltan.join(' ni ') + '. Si lo necesita, pídaselo al estudio.' : '';
+    }
+}
+
 async function cargarEmpresasCliente(usuarioId) {
     const selector = document.getElementById('selector-empresas-cliente');
-       
     try {
-        const q = query(
-            collection(db, "clients"),
-            where("usuario_id", "==", usuarioId)
-        );
-        const querySnapshot = await getDocs(q);
+        const empresas = [];
+        const vistas = new Set();
 
-        if (querySnapshot.empty) {
-            // Sin empresa asociada a este usuario: no se puede subir ni listar nada
+        // 1) Empresas de las que es titular
+        const titular = await getDocs(query(collection(db, "clients"), where("usuario_id", "==", usuarioId)));
+        titular.forEach((d) => {
+            vistas.add(d.id);
+            PERMISOS[d.id] = { subir: true, descargar: true };
+            empresas.push({ id: d.id, nombre: d.data().nombre_empresa });
+        });
+
+        // 2) Empresas a las que fue habilitado con permisos propios
+        let habilitado = { docs: [] };
+        try {
+            habilitado = await getDocs(query(collection(db, "accesos_portal"), where("email", "==", usuarioId)));
+        } catch (err) { console.error("Accesos del portal no disponibles:", err); } // el titular entra igual
+        for (const a of habilitado.docs) {
+            const x = a.data();
+            if (x.activo !== true || vistas.has(x.cliente_id)) continue;
+            try {
+                const ficha = await getDoc(doc(db, "clients", x.cliente_id));
+                if (!ficha.exists()) continue;
+                vistas.add(x.cliente_id);
+                PERMISOS[x.cliente_id] = { subir: x.puede_subir === true, descargar: x.puede_descargar === true };
+                empresas.push({ id: x.cliente_id, nombre: ficha.data().nombre_empresa });
+            } catch (err) { console.error("Empresa no accesible:", x.cliente_id, err); }
+        }
+
+        if (!empresas.length) {
             selector.style.display = 'none';
             ID_CLIENTE = null;
             return;
         }
 
-        const empresas = [];
-        querySnapshot.forEach((d) => empresas.push({ id: d.id, nombre: d.data().nombre_empresa }));
         ID_CLIENTE = empresas[0].id;
-
         if (empresas.length === 1) {
             selector.style.display = 'none';
         } else {
@@ -60,10 +98,10 @@ async function cargarEmpresasCliente(usuarioId) {
             selector.style.display = 'block';
             selector.addEventListener('change', () => {
                 ID_CLIENTE = selector.value;
-                cargarEntregas('recientes');
+                aplicarPermisos();
+                if ((PERMISOS[ID_CLIENTE] || {}).descargar) cargarEntregas('recientes');
             });
         }
-
     } catch (error) {
         console.error("Error al cargar empresas:", error);
     }
@@ -81,19 +119,18 @@ onAuthStateChanged(auth, async (usuario) => {
         document.getElementById('form-cliente-subir').style.display = 'none';
         return;
     }
-    cargarEntregas('recientes');
+    aplicarPermisos();
+    if ((PERMISOS[ID_CLIENTE] || {}).descargar) cargarEntregas('recientes');
 });
 
 const formCliente = document.getElementById('form-cliente-subir');
 const mensajeExito = document.getElementById('mensaje-exito');
 
-// Empresa activa del cliente: se toma de las empresas asociadas a su usuario (antes estaba fija en una empresa de prueba,
-// por lo que cualquier documento subido terminaba en la carpeta de esa empresa).
-let ID_CLIENTE = null;
+// ID_CLIENTE (empresa activa) se declara arriba, junto con los permisos.
 
 formCliente.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!ID_CLIENTE) return;
+    if (!ID_CLIENTE || !(PERMISOS[ID_CLIENTE] || {}).subir) return;
 
     const categoria = document.getElementById('cliente-categoria').value;
     const archivoInput = document.getElementById('cliente-archivo');

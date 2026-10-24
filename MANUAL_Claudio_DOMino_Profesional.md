@@ -54,7 +54,7 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 - Firma de pie: Desarrollado por The DOM Studio Web · WhatsApp 261-3431216 · thedomstudioweb@gmail.com.
 
 ## Pendiente de confirmar
-- Reglas de seguridad de Firebase: se deben revisar en la consola (la configuración del cliente es pública por diseño; lo que protege los datos son esas reglas).
+- Reglas de seguridad de Firebase: el archivo `firestore.rules` del repositorio es la versión vigente; se publican a mano en la consola de Firebase (Firestore > Reglas > Publicar).
 
 
 ## Equipo: sumar personas y cambiar niveles (solo Profesional Senior)
@@ -65,3 +65,14 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 - **Dar de baja / Reactivar:** quien está de baja no puede entrar, pero su historial se conserva.
 - **Clientes:** en Clientes > Administrar cartera, cada cliente con correo tiene el botón «Enviar acceso», que le manda el correo para crear su clave del portal.
 - Si el correo no llega, revisar la carpeta de no deseados.
+
+## Accesos al portal por empresa: varias personas con permisos distintos
+- Se entra desde Clientes > Administrar cartera, botón **Accesos** de cada empresa.
+- **El titular** es el correo cargado en la ficha de la empresa. Siempre puede enviar documentos y ver y descargar lo que entrega el estudio.
+- **Agregar una persona de la empresa:** nombre, correo y dos permisos: «Puede enviar documentos al estudio» y «Puede ver y descargar lo que entrega el estudio». Al agregarla recibe un correo para crear su propia clave.
+- **Cambiar permisos:** tildar o destildar en la lista; se guarda al instante.
+- **Dar de baja / Reactivar:** quien está de baja deja de entrar al portal de esa empresa.
+- **Reenviar acceso:** si no le llegó el correo.
+- Una misma persona puede estar en varias empresas, cada una con permisos distintos; en el portal elige la empresa arriba.
+- Si el usuario no tiene un permiso, el portal oculta esa parte y le avisa que se lo pida al estudio.
+- Los correos se guardan siempre en minúsculas.

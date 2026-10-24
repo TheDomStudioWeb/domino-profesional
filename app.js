@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
-import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, query, where, getDoc, serverTimestamp, onSnapshot, orderBy,deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, query, where, getDoc, serverTimestamp, onSnapshot, orderBy,deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
@@ -153,6 +153,7 @@ const querySnapshot = await getDocs(q);
         data-estado="${cliente.estado}">
     ${cliente.estado === 'activo' ? 'Desactivar' : 'Activar'}
 </button>
+                    <button class="btn-secundario" data-act="accesos" data-id="${esc(idDoc)}" data-nombre="${esc(cliente.nombre_empresa)}" title="Quiénes de esta empresa entran al portal y qué pueden hacer">Accesos</button>
                     ${cliente.usuario_id ? `<button class="btn-secundario" data-act="acceso" data-email="${esc(cliente.usuario_id)}" title="Envía al cliente un correo para crear o restablecer su clave del portal">Enviar acceso</button>` : ''}
                 </div>
             `;
@@ -190,7 +191,7 @@ formAlta.addEventListener('submit', async (e) => {
             cuit: cuit,
             estado: "activo",
             fecha_creacion: new Date().toISOString(),
-            usuario_id: document.getElementById('client-usuario-id').value
+            usuario_id: document.getElementById('client-usuario-id').value.trim().toLowerCase()
         });
 
         formAlta.reset(); // Limpiamos los campos
@@ -1060,6 +1061,128 @@ async function cargarMisTareas(nombreAsistente) {
     }
 }
 
+
+// =========================================
+// ACCESOS AL PORTAL POR EMPRESA (permisos por persona)
+// El titular es el correo de la ficha (usuario_id) y siempre tiene todos los permisos. Cada persona extra vive en
+// accesos_portal con ID "correo__idEmpresa" y permisos propios (enviar documentos / ver y descargar lo entregado).
+// =========================================
+let accesosEmpresa = { id: null, nombre: '' };
+const idAcceso = (email, clienteId) => `${email}__${clienteId}`;
+
+window.abrirAccesos = async function(clienteId, nombre) {
+    accesosEmpresa = { id: clienteId, nombre: nombre || '' };
+    document.getElementById('titulo-accesos').textContent = 'Accesos al portal: ' + (nombre || '');
+    document.getElementById('modal-accesos').style.display = 'flex';
+    await renderAccesos();
+};
+
+async function renderAccesos() {
+    const lista = document.getElementById('lista-accesos');
+    lista.innerHTML = '<p style="color: var(--text-muted);">Cargando…</p>';
+    try {
+        const [fic, snap] = await Promise.all([
+            getDoc(doc(db, 'clients', accesosEmpresa.id)),
+            getDocs(query(collection(db, 'accesos_portal'), where('cliente_id', '==', accesosEmpresa.id)))
+        ]);
+        const titular = fic.exists() ? (fic.data().usuario_id || '') : '';
+        const filas = [];
+        snap.forEach((d) => filas.push({ id: d.id, ...d.data() }));
+        filas.sort((a, b) => String(a.nombre || a.email).localeCompare(String(b.nombre || b.email)));
+        let html = titular
+            ? `<div class="acc-fila acc-titular"><div><strong>${esc(titular)}</strong><span class="acc-sub">Titular de la empresa · todos los permisos</span></div></div>`
+            : `<p style="color: var(--text-muted);">Esta ficha no tiene titular. Cargá un correo en el campo «usuario» de la ficha.</p>`;
+        html += filas.map((f) => `
+            <div class="acc-fila ${f.activo === false ? 'acc-baja' : ''}" data-aid="${esc(f.id)}" data-email="${esc(f.email)}">
+                <div><strong>${esc(f.nombre || f.email)}</strong><span class="acc-sub">${esc(f.email)}${f.activo === false ? ' · dado de baja' : ''}</span></div>
+                <div class="acc-perm">
+                    <label><input type="checkbox" data-perm="puede_subir" ${f.puede_subir ? 'checked' : ''} ${f.activo === false ? 'disabled' : ''}> Enviar documentos</label>
+                    <label><input type="checkbox" data-perm="puede_descargar" ${f.puede_descargar ? 'checked' : ''} ${f.activo === false ? 'disabled' : ''}> Ver y descargar</label>
+                </div>
+                <div class="acc-botones">
+                    ${f.activo === false
+                        ? '<button class="btn-secundario" data-ac="reactivar">Reactivar</button>'
+                        : '<button class="btn-secundario" data-ac="reenviar">Reenviar acceso</button><button class="btn-baja" data-ac="baja">Dar de baja</button>'}
+                </div>
+            </div>`).join('');
+        lista.innerHTML = html;
+    } catch (e) {
+        console.error('Accesos:', e);
+        lista.innerHTML = '<p style="color: var(--rojo-alerta);">No se pudieron cargar los accesos.</p>';
+    }
+}
+
+document.getElementById('close-modal-accesos').addEventListener('click', () => {
+    document.getElementById('modal-accesos').style.display = 'none';
+});
+
+document.getElementById('lista-accesos').addEventListener('change', async (e) => {
+    const chk = e.target.closest('input[data-perm]');
+    if (!chk) return;
+    const fila = chk.closest('[data-aid]');
+    try {
+        await updateDoc(doc(db, 'accesos_portal', fila.dataset.aid), { [chk.dataset.perm]: chk.checked });
+        window.DOMINO.aviso('Permiso actualizado.');
+    } catch (err) {
+        console.error(err); chk.checked = !chk.checked;
+        window.DOMINO.aviso('No se pudo cambiar el permiso.', 'error');
+    }
+});
+
+document.getElementById('lista-accesos').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-ac]');
+    if (!btn) return;
+    const fila = btn.closest('[data-aid]');
+    const ref = doc(db, 'accesos_portal', fila.dataset.aid);
+    try {
+        if (btn.dataset.ac === 'reenviar') { await window.enviarAcceso(fila.dataset.email, btn); return; }
+        if (btn.dataset.ac === 'baja') {
+            if (!confirm('¿Dar de baja a esta persona? Deja de entrar al portal de esta empresa.')) return;
+            await updateDoc(ref, { activo: false });
+        } else if (btn.dataset.ac === 'reactivar') {
+            await updateDoc(ref, { activo: true });
+        }
+        await renderAccesos();
+    } catch (err) {
+        console.error(err); window.DOMINO.aviso('No se pudo completar la acción.', 'error');
+    }
+});
+
+document.getElementById('form-acceso').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nombre = document.getElementById('acc-nombre').value.trim();
+    const email = document.getElementById('acc-email').value.trim().toLowerCase();
+    if (!nombre || !email || !accesosEmpresa.id) return;
+    const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
+    try {
+        const fic = await getDoc(doc(db, 'clients', accesosEmpresa.id));
+        if (fic.exists() && String(fic.data().usuario_id || '').toLowerCase() === email) {
+            window.DOMINO.aviso('Ese correo ya es el titular de la empresa.', 'error'); btn.disabled = false; return;
+        }
+        const ref = doc(db, 'accesos_portal', idAcceso(email, accesosEmpresa.id));
+        if ((await getDoc(ref)).exists()) {
+            window.DOMINO.aviso('Esa persona ya figura en la lista de esta empresa.', 'error'); btn.disabled = false; return;
+        }
+        await setDoc(ref, {
+            email, nombre, cliente_id: accesosEmpresa.id, cliente_nombre: accesosEmpresa.nombre,
+            puede_subir: document.getElementById('acc-subir').checked,
+            puede_descargar: document.getElementById('acc-descargar').checked,
+            activo: true, creado: serverTimestamp()
+        });
+    } catch (err) {
+        console.error(err); window.DOMINO.aviso('No se pudo guardar a la persona. Verificá tus permisos.', 'error'); btn.disabled = false; return;
+    }
+    try {
+        const r = await window.DOMINO.crearAcceso(email);
+        window.DOMINO.aviso(r === 'creado' ? `Listo. Le enviamos un correo a ${email} para que cree su clave.` : `${email} ya tenía clave. Le enviamos un correo por si quiere restablecerla.`);
+    } catch (err) {
+        console.error(err);
+        window.DOMINO.aviso('La persona quedó cargada, pero el correo no salió: ' + window.DOMINO.textoErrorAcceso(err) + ' Usá «Reenviar acceso».', 'error');
+    }
+    e.target.reset(); document.getElementById('acc-subir').checked = true; btn.disabled = false;
+    await renderAccesos();
+});
+
 // Acciones de tarjetas (delegadas, con datos escapados en atributos)
 document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]');
@@ -1070,6 +1193,7 @@ document.addEventListener('click', (e) => {
     else if (d.act === 'estado') abrirModalEstado(d.id, d.estado, d.titulo);
     else if (d.act === 'descargar') descargarDocumento(d.id, d.url, d.empresa, d.categoria, d.archivo);
     else if (d.act === 'acceso') enviarAcceso(d.email, el);
+    else if (d.act === 'accesos') abrirAccesos(d.id, d.nombre);
     else if (d.act === 'buzon') { abrirExpediente(d.id, d.nombre); abrirBuzon(); }
 });
 document.addEventListener('keydown', (e) => {

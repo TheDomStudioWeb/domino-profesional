@@ -15,7 +15,13 @@ service cloud.firestore {
     function esSenior() { return esPersonal() && perfil().rol_jerarquia == 'senior'; }
 
     function clienteDe(id) { return get(/databases/$(database)/documents/clients/$(id)).data; }
-    function esDueno(clienteId) { return logueado() && clienteDe(clienteId).usuario_id.lower() == mail(); }
+    // Titular de la empresa: el correo cargado en la ficha (usuario_id, en minúsculas).
+    function esDueno(clienteId) { return logueado() && clienteDe(clienteId).usuario_id == request.auth.token.email; }
+
+    // Otras personas de la empresa: documento en accesos_portal con ID "correo__idEmpresa" y permisos propios.
+    function pathAcceso(clienteId) { return /databases/$(database)/documents/accesos_portal/$(request.auth.token.email + '__' + clienteId); }
+    function tieneAcceso(clienteId) { return logueado() && exists(pathAcceso(clienteId)) && get(pathAcceso(clienteId)).data.activo == true; }
+    function puede(clienteId, permiso) { return tieneAcceso(clienteId) && get(pathAcceso(clienteId)).data[permiso] == true; }
 
     // Personal: cada uno lee su propio perfil; todo el personal ve a los demás.
     // Solo un Profesional Senior da de alta, cambia nivel o da de baja.
@@ -27,7 +33,7 @@ service cloud.firestore {
 
     // Clientes: el personal gestiona todo; el cliente ve solo su ficha.
     match /clients/{id} {
-      allow read: if esPersonal() || (logueado() && resource.data.usuario_id.lower() == mail());
+      allow read: if esPersonal() || (logueado() && resource.data.usuario_id == request.auth.token.email) || tieneAcceso(id);
       allow write: if esPersonal();
     }
 
@@ -37,15 +43,21 @@ service cloud.firestore {
 
     // Documentos: personal total; el cliente ve y sube solo los de su ficha.
     match /documents/{id} {
-      allow read: if esPersonal() || esDueno(resource.data.cliente_id);
-      allow create: if esPersonal() || esDueno(request.resource.data.cliente_id);
+      allow read: if esPersonal() || esDueno(resource.data.cliente_id) || tieneAcceso(resource.data.cliente_id);
+      allow create: if esPersonal() || esDueno(request.resource.data.cliente_id) || puede(request.resource.data.cliente_id, 'puede_subir');
       allow update, delete: if esPersonal();
     }
 
     match /entregas/{id} {
-      allow read: if esPersonal() || esDueno(resource.data.cliente_id);
+      allow read: if esPersonal() || esDueno(resource.data.cliente_id) || puede(resource.data.cliente_id, 'puede_descargar');
       allow create, update: if esPersonal();
       allow delete: if esSenior();
+    }
+
+    // Accesos de personas de una empresa: el personal los administra; cada persona ve los suyos.
+    match /accesos_portal/{id} {
+      allow read: if esPersonal() || (logueado() && resource.data.email == request.auth.token.email);
+      allow write: if esPersonal();
     }
 
     match /mensajes/{id} {
