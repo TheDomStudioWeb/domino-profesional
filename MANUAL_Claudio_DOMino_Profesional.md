@@ -3,11 +3,11 @@
 Para que Claudio pueda explicar la app. Marca: DOMino (producto de The DOM Studio Web). Trato con el equipo del estudio: voseo.
 
 ## Qué es
-DOMino Profesional es el Hub de gestión de un estudio contable o jurídico: ordena clientes, procesos, documentos, plazos y equipo en una sola aplicación que se instala en el celular o la PC. Al entrar, la primera pantalla es **Inicio**: resume lo urgente y da acceso a cada función en un toque.
+DOMino Profesional es el Hub de gestión de un estudio profesional (contable, jurídico, notarial): ordena clientes, procesos, documentos, plazos y equipo en una sola aplicación que se instala en el celular o la PC. Al entrar, la primera pantalla es **Inicio**: resume lo urgente y da acceso a cada función en un toque.
 
 ## Niveles de usuario
-- **Contador Senior:** ve todo, incluido Equipo.
-- **Contador Mid-Senior:** ve todo menos Equipo.
+- **Profesional Senior:** ve todo, incluido Equipo.
+- **Profesional Mid Senior:** ve todo menos Equipo.
 - **Asistente:** ve Inicio, Mis Tareas, Calendario, Herramientas y Chat. Solo trabaja con las tareas que tiene asignadas.
 - **Cliente:** entra por el Portal del cliente (otra pantalla de ingreso). Envía documentos al estudio y descarga lo que el estudio le envía.
 

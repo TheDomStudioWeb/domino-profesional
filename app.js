@@ -569,7 +569,7 @@ async function cargarCacheClientes() {
     });
 }
 
-const ETIQUETA_ROL = { senior: 'Contador Senior', midsenior: 'Contador Mid-Senior', asistente: 'Asistente' };
+const ETIQUETA_ROL = { senior: 'Profesional Senior', midsenior: 'Profesional Mid Senior', asistente: 'Asistente' };
 
 function aplicarPermisosPorRol(rol) {
     // El menú muestra solo lo que corresponde al nivel de cada persona
@@ -795,7 +795,7 @@ const archivoInput = document.getElementById('entrega-file');
 const archivo = archivoInput.files[0];  
 const nombreArchivo = archivo.name;  
 const fechaHoy = new Date().toLocaleDateString('es-ES'); 
-const enviado_por = "Contador" ; 
+const enviado_por = "Profesional" ; 
 
 try {  
 const btnSend = formEnviarCliente.querySelector('.btn-primary');  
@@ -812,7 +812,7 @@ categoria: categoria,
 nombre_archivo: nombreArchivo,  
 fecha_envio: fechaHoy,  
 url_descarga: downloadURL ,
-enviado_por:"Contador",
+enviado_por:"Profesional",
 fecha_timestamp: serverTimestamp()
 });  
 

@@ -1,7 +1,7 @@
 {
     "name": "DOMino Profesional",
     "short_name": "DOMino",
-    "description": "Hub de gestión para estudios contables y profesionales",
+    "description": "Hub de gestión para estudios profesionales",
     "start_url": "./",
     "display": "standalone",
     "background_color": "#0a0a0a",

@@ -67,7 +67,7 @@ window.abrirExpedientes = function (modo) {
 // ---------------------------------------------------------------
 // INICIO
 // ---------------------------------------------------------------
-const ROL_TXT = { senior: 'Contador Senior', midsenior: 'Contador Mid-Senior', asistente: 'Asistente' };
+const ROL_TXT = { senior: 'Profesional Senior', midsenior: 'Profesional Mid Senior', asistente: 'Asistente' };
 
 function badgeChat() { const b = $('badge-chat'); return b && b.style.display !== 'none' ? b.innerText : ''; }
 
