@@ -469,7 +469,16 @@
         <h1>Equipo del estudio</h1>
         <div class="topbar-right"><button class="btn-secundario" onclick="navegarA('hub')">← Inicio</button></div>
     </header>
-    <p class="hub-sub">Personas con acceso al estudio y su nivel. Para sumar o quitar a alguien, por ahora se hace desde la consola de Firebase.</p>
+    <p class="hub-sub">Quiénes trabajan en el estudio y con qué nivel. Para sumar a alguien: cargá sus datos y la persona recibe un correo para crear su propia clave.</p>
+    <form id="form-alta-persona" class="eq-alta">
+        <h3>Agregar una persona</h3>
+        <div class="eq-alta-campos">
+            <label>Nombre<input id="persona-nombre" required autocomplete="off" placeholder="Nombre y apellido"></label>
+            <label>Correo<input id="persona-email" type="email" required autocomplete="off" placeholder="correo@ejemplo.com"></label>
+            <label>Nivel<select id="persona-nivel"><option value="asistente">Asistente</option><option value="midsenior">Profesional Mid Senior</option><option value="senior">Profesional Senior</option></select></label>
+        </div>
+        <button type="submit" class="btn-primary">Agregar y enviar acceso</button>
+    </form>
     <div class="task-list" id="lista-equipo"></div>
 </div>
 

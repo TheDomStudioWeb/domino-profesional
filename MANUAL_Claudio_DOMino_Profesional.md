@@ -55,3 +55,13 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 
 ## Pendiente de confirmar
 - Reglas de seguridad de Firebase: se deben revisar en la consola (la configuración del cliente es pública por diseño; lo que protege los datos son esas reglas).
+
+
+## Equipo: sumar personas y cambiar niveles (solo Profesional Senior)
+- Se entra desde Inicio > Plazos y equipo > Equipo.
+- **Agregar una persona:** completar nombre, correo y nivel, y tocar «Agregar y enviar acceso». La persona recibe un correo y elige su propia primera clave. Nadie más conoce esa clave.
+- **Cambiar el nivel** de alguien: elegir otro nivel en la lista. Se aplica la próxima vez que entre. No se puede cambiar el propio nivel, y siempre tiene que quedar un Profesional Senior.
+- **Reenviar acceso:** si la persona no recibió el correo o olvidó su clave.
+- **Dar de baja / Reactivar:** quien está de baja no puede entrar, pero su historial se conserva.
+- **Clientes:** en Clientes > Administrar cartera, cada cliente con correo tiene el botón «Enviar acceso», que le manda el correo para crear su clave del portal.
+- Si el correo no llega, revisar la carpeta de no deseados.

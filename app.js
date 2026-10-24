@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
 import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, query, where, getDoc, serverTimestamp, onSnapshot, orderBy,deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfI_BBvq61f43ZaFYtZOYvcFZB39jsNt0",
@@ -23,6 +23,53 @@ const auth = getAuth(app);
 // Escapa texto antes de insertarlo como HTML (nombres, archivos, mensajes)
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 window.DOMINO = { db, auth, esc, listo: false };
+
+// Aviso breve en pantalla (reemplaza alert para confirmaciones)
+window.DOMINO.aviso = function(texto, tipo) {
+    let t = document.getElementById('toast-dom');
+    if (!t) { t = document.createElement('div'); t.id = 'toast-dom'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+    t.textContent = texto; t.className = 'toast-dom ' + (tipo || 'ok') + ' show';
+    clearTimeout(window.__toastT); window.__toastT = setTimeout(() => t.classList.remove('show'), 6000);
+};
+
+// Alta de acceso: crea el usuario con una clave descartable en una conexión aparte (para no cerrar la sesión de
+// quien lo hace) y envía el correo para que la propia persona elija su primera clave. Nadie más conoce la clave.
+let appAlta = null;
+window.DOMINO.crearAcceso = async function(email) {
+    email = String(email || '').trim().toLowerCase();
+    if (!email) throw Object.assign(new Error('sin correo'), { code: 'auth/invalid-email' });
+    if (!appAlta) appAlta = initializeApp(firebaseConfig, 'alta');
+    const authAlta = getAuth(appAlta);
+    let resultado = 'creado';
+    try {
+        const tmp = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())) + 'Aa1!';
+        await createUserWithEmailAndPassword(authAlta, email, tmp);
+    } catch (e) {
+        if (e.code === 'auth/email-already-in-use') resultado = 'existente'; else throw e;
+    }
+    await sendPasswordResetEmail(authAlta, email);
+    try { await signOut(authAlta); } catch (e) { /* sin sesión que cerrar */ }
+    return resultado;
+};
+window.DOMINO.textoErrorAcceso = function(e) {
+    const c = (e && e.code) || '';
+    if (c === 'auth/invalid-email') return 'El correo no es válido. Revisalo.';
+    if (c === 'auth/network-request-failed') return 'No hay conexión. Probá de nuevo en un momento.';
+    if (c === 'auth/operation-not-allowed') return 'El ingreso con correo y clave no está habilitado en Firebase.';
+    if (c === 'auth/too-many-requests') return 'Demasiados intentos. Esperá unos minutos.';
+    return 'No se pudo enviar el acceso. Probá de nuevo.';
+};
+window.enviarAcceso = async function(email, btn) {
+    const txt = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+    try {
+        const r = await window.DOMINO.crearAcceso(email);
+        window.DOMINO.aviso(r === 'creado'
+            ? `Listo. Le enviamos un correo a ${email} para que cree su clave.`
+            : `${email} ya tenía acceso. Le enviamos un correo para que restablezca su clave.`);
+    } catch (e) { console.error(e); window.DOMINO.aviso(window.DOMINO.textoErrorAcceso(e), 'error'); }
+    if (btn) { btn.disabled = false; btn.textContent = txt; }
+};
 
 const modal = document.getElementById('modal-cliente');
 const btnNuevoCliente = document.getElementById('btn-nuevo-cliente');
@@ -101,6 +148,7 @@ const querySnapshot = await getDocs(q);
         data-estado="${cliente.estado}">
     ${cliente.estado === 'activo' ? 'Desactivar' : 'Activar'}
 </button>
+                    ${cliente.usuario_id ? `<button class="btn-secundario" data-act="acceso" data-email="${esc(cliente.usuario_id)}" title="Envía al cliente un correo para crear o restablecer su clave del portal">Enviar acceso</button>` : ''}
                 </div>
             `;
             listaClientes.innerHTML += clienteHTML;
@@ -626,6 +674,12 @@ async function iniciarApp() {
         }
 
         const perfil = userSnap.docs[0].data();
+        if (perfil.activo === false) {
+            alert("Tu acceso está dado de baja. Contactá al responsable del estudio.");
+            await signOut(auth);
+            window.location.href = 'login.html';
+            return;
+        }
         const rolUsuario = perfil.rol_jerarquia;
         window.rolActual = rolUsuario;
         window.nombreDisplay = perfil.nombre_display || '';
@@ -994,6 +1048,7 @@ document.addEventListener('click', (e) => {
     else if (d.act === 'docs-tarea') { if (d.cliente) idClienteActivo = d.cliente; abrirModalDocsTarea(d.id, d.titulo); }
     else if (d.act === 'estado') abrirModalEstado(d.id, d.estado, d.titulo);
     else if (d.act === 'descargar') descargarDocumento(d.id, d.url, d.empresa, d.categoria, d.archivo);
+    else if (d.act === 'acceso') enviarAcceso(d.email, el);
     else if (d.act === 'buzon') { abrirExpediente(d.id, d.nombre); abrirBuzon(); }
 });
 document.addEventListener('keydown', (e) => {

@@ -38,7 +38,8 @@ export const onAuthStateChanged=(a,cb)=>{setTimeout(()=>cb(U),0);return()=>{}};
 export const signOut=async()=>{window.__SIGNED_OUT__=true};
 export const signInWithEmailAndPassword=async()=>({user:U});
 export const setPersistence=async()=>{};export const browserLocalPersistence={};
-export const sendPasswordResetEmail=async()=>{};
+export const sendPasswordResetEmail=async(a,e)=>{(window.__MAILS__=window.__MAILS__||[]).push(e)};
+export const createUserWithEmailAndPassword=async(a,e)=>{window.__CREADOS__=window.__CREADOS__||[];if(window.__CREADOS__.includes(e)||['daniel@estudio.test','asist@estudio.test','mid@estudio.test','cli@alfa.test'].includes(e)){const x=new Error('dup');x.code='auth/email-already-in-use';throw x}window.__CREADOS__.push(e);return{user:{}}};
 '''
 APP='export const initializeApp=()=>({});'
 ANALYTICS='export const getAnalytics=()=>({});'

@@ -1,7 +1,7 @@
 // DOMino Profesional · Hub de gestión
 // Inicio con accesos, expedientes, calendario, herramientas y equipo.
 // Usa la conexión a Firebase que arma app.js (window.DOMINO).
-import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { collection, getDocs, query, where, addDoc, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const D = () => window.DOMINO;
 const esc = (v) => (D() ? D().esc(v) : String(v ?? ''));
@@ -260,18 +260,72 @@ $('cal-hoy').addEventListener('click', () => { calMes = new Date(); calMes.setDa
 // ---------------------------------------------------------------
 // EQUIPO
 // ---------------------------------------------------------------
+const NIVELES = [['senior', 'Profesional Senior'], ['midsenior', 'Profesional Mid Senior'], ['asistente', 'Asistente']];
+let equipoCache = [];
 async function renderEquipo() {
   const cont = $('lista-equipo');
   cont.innerHTML = '<p class="vacio">Cargando…</p>';
   try {
     const snap = await getDocs(collection(D().db, 'users'));
-    const filas = [];
-    snap.forEach((u) => filas.push(u.data()));
+    equipoCache = [];
+    snap.forEach((u) => equipoCache.push({ id: u.id, ...u.data() }));
     const orden = { senior: 0, midsenior: 1, asistente: 2 };
-    filas.sort((a, b) => (orden[a.rol_jerarquia] ?? 9) - (orden[b.rol_jerarquia] ?? 9));
-    cont.innerHTML = filas.map((u) => `<div class="task-item ${u.rol_jerarquia === 'senior' ? 'border-verde' : 'border-ambar'}"><div class="task-info"><h4>${esc(u.nombre_display || u.email)}</h4><p style="color:var(--text-muted);font-size:.85rem;">${esc(u.email)} | Nivel: <strong>${esc(ROL_TXT[u.rol_jerarquia] || u.rol_jerarquia || 'Sin nivel')}</strong></p></div></div>`).join('') || '<p class="vacio">No hay personas cargadas.</p>';
+    equipoCache.sort((a, b) => (orden[a.rol_jerarquia] ?? 9) - (orden[b.rol_jerarquia] ?? 9) || String(a.nombre_display).localeCompare(String(b.nombre_display)));
+    const yo = String(D().email || '').toLowerCase();
+    cont.innerHTML = equipoCache.map((u) => {
+      const soyYo = String(u.email || '').toLowerCase() === yo;
+      const baja = u.activo === false;
+      const opts = NIVELES.map(([v, t]) => `<option value="${v}" ${u.rol_jerarquia === v ? 'selected' : ''}>${t}</option>`).join('');
+      return `<div class="task-item eq-fila ${baja ? 'eq-baja' : (u.rol_jerarquia === 'senior' ? 'border-verde' : 'border-ambar')}" data-uid="${esc(u.id)}">
+        <div class="task-info"><h4>${esc(u.nombre_display || u.email)} ${soyYo ? '<small class="eq-yo">(vos)</small>' : ''} ${baja ? '<small class="eq-tag">De baja</small>' : ''}</h4>
+        <p style="color:var(--text-muted);font-size:.85rem;">${esc(u.email)}</p></div>
+        <div class="eq-acc">
+          <label class="eq-niv"><span>Nivel</span><select data-eq="nivel" ${soyYo ? 'disabled title="No podés cambiar tu propio nivel"' : ''}>${opts}</select></label>
+          <button class="btn-secundario" data-eq="acceso">Reenviar acceso</button>
+          ${soyYo ? '' : `<button class="${baja ? 'btn-activar' : 'btn-baja'}" data-eq="baja">${baja ? 'Reactivar' : 'Dar de baja'}</button>`}
+        </div></div>`;
+    }).join('') || '<p class="vacio">No hay personas cargadas.</p>';
   } catch (e) { console.error(e); cont.innerHTML = '<p class="vacio">No se pudo cargar el equipo.</p>'; }
 }
+const seniorsActivos = (exceptoId) => equipoCache.filter((u) => u.rol_jerarquia === 'senior' && u.activo !== false && u.id !== exceptoId).length;
+async function guardarUsuario(id, datos) { await updateDoc(doc(D().db, 'users', id), datos); }
+document.addEventListener('change', async (e) => {
+  const sel = e.target.closest('[data-eq="nivel"]');
+  if (!sel) return;
+  const fila = sel.closest('[data-uid]'); const u = equipoCache.find((x) => x.id === fila.dataset.uid);
+  if (!u) return;
+  if (u.rol_jerarquia === 'senior' && sel.value !== 'senior' && seniorsActivos(u.id) < 1) {
+    D().aviso('Tiene que quedar al menos un Profesional Senior.', 'error'); sel.value = u.rol_jerarquia; return;
+  }
+  try { await guardarUsuario(u.id, { rol_jerarquia: sel.value }); u.rol_jerarquia = sel.value; D().aviso(`Nivel de ${u.nombre_display || u.email} actualizado. Se aplica la próxima vez que entre.`); }
+  catch (err) { console.error(err); D().aviso('No se pudo guardar el cambio. Verificá tu conexión y tus permisos.', 'error'); sel.value = u.rol_jerarquia; }
+});
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-eq="acceso"],[data-eq="baja"]');
+  if (!b) return;
+  const u = equipoCache.find((x) => x.id === b.closest('[data-uid]').dataset.uid); if (!u) return;
+  if (b.dataset.eq === 'acceso') { window.enviarAcceso(u.email, b); return; }
+  const darBaja = u.activo !== false;
+  if (darBaja && u.rol_jerarquia === 'senior' && seniorsActivos(u.id) < 1) { D().aviso('Tiene que quedar al menos un Profesional Senior activo.', 'error'); return; }
+  try { await guardarUsuario(u.id, { activo: !darBaja }); D().aviso(darBaja ? `${u.nombre_display || u.email} quedó de baja: ya no puede entrar.` : `${u.nombre_display || u.email} fue reactivado.`); renderEquipo(); }
+  catch (err) { console.error(err); D().aviso('No se pudo guardar el cambio.', 'error'); }
+});
+document.addEventListener('submit', async (e) => {
+  if (e.target.id !== 'form-alta-persona') return;
+  e.preventDefault();
+  const nombre = $('persona-nombre').value.trim(), email = $('persona-email').value.trim().toLowerCase(), nivel = $('persona-nivel').value;
+  if (!nombre || !email) return;
+  if (equipoCache.some((u) => String(u.email).toLowerCase() === email)) { D().aviso('Ese correo ya está cargado en el equipo.', 'error'); return; }
+  const btn = e.target.querySelector('button[type=submit]'); btn.disabled = true;
+  try {
+    await addDoc(collection(D().db, 'users'), { email, nombre_display: nombre, rol_jerarquia: nivel, activo: true, creado: serverTimestamp() });
+  } catch (err) { console.error(err); D().aviso('No se pudo guardar a la persona. Verificá tus permisos.', 'error'); btn.disabled = false; return; }
+  try {
+    const r = await D().crearAcceso(email);
+    D().aviso(r === 'creado' ? `${nombre} fue agregado. Le enviamos un correo a ${email} para que cree su clave.` : `${nombre} fue agregado. Ya tenía una cuenta: le enviamos un correo para restablecer su clave.`);
+  } catch (err) { console.error(err); D().aviso(`${nombre} quedó cargado, pero no se pudo enviar el correo (${D().textoErrorAcceso(err)}) Probá con «Reenviar acceso».`, 'error'); }
+  e.target.reset(); btn.disabled = false; renderEquipo();
+});
 
 // ---------------------------------------------------------------
 // HERRAMIENTAS
