@@ -147,6 +147,7 @@ const querySnapshot = await getDocs(q);
                     <div data-act="expediente" data-id="${esc(idDoc)}" data-nombre="${esc(cliente.nombre_empresa)}" role="button" tabindex="0" style="cursor: pointer; flex-grow: 1;">
                         <h4 style="pointer-events: none;">${esc(cliente.nombre_empresa)}</h4>
                         <p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">CUIT: ${esc(cliente.cuit)}</p>
+                        ${(window.DOMINO_MODULOS || {}).turnos && (cliente.mascotas || []).length ? `<p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">Mascotas: ${esc(cliente.mascotas.map((m) => m.nombre).join(', '))}</p>` : ''}
                     </div>
                     <button class="${cliente.estado === 'activo' ? 'btn-baja' : 'btn-activar'}" 
         data-id="${idDoc}" 

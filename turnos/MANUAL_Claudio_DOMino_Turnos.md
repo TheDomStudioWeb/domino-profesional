@@ -38,6 +38,8 @@ Estados del turno: Por confirmar → Confirmado → En sala («Llegó») → Ate
 - Para vincular hay que haber ingresado antes al Hub de DOMino Profesional con el usuario del estudio (la agenda de turnos tiene su propio ingreso, aparte). Si no, el panel avisa «Falta ingresar al Hub».
 - Si el turno está a nombre de **otra persona** (esposa, hijo, vecino…), antes de vincular el panel pide aclarar la **relación** con el responsable. La ficha muestra al **Responsable** (el nombre con que se creó) y, aparte, **Familiares y otros** con su relación; se pueden quitar con la ×.
 - Si al crear la ficha quedan vinculados automáticamente otros turnos del mismo teléfono con otro nombre, el panel pregunta la relación de cada uno. Si se omitió, el turno vinculado muestra el botón **«Indicar relación con…»**. En la ficha del Hub también se puede **agregar un familiar** a mano, con su relación.
+- **Libreta sanitaria:** en la ficha del Hub, tocar el nombre de una mascota abre su libreta. Cada registro lleva tipo (vacuna, antirrábica, desparasitación, consulta, cirugía, peso u otro), fecha, detalle y, si corresponde, la **próxima fecha**. La libreta avisa en rojo lo **vencido** y en verde el **próximo vencimiento**; la mascota con algo vencido muestra ⚠. Para guardar un certificado o foto se usa el botón **«Adjuntar certificado o foto»**, que abre el Buzón documental de ese cliente.
+- **Mascotas por dueño:** la lista de Clientes y los buscadores del Hub muestran las mascotas de cada dueño, y se puede buscar por el nombre de la mascota o de un familiar.
 - La ficha guarda nombre, teléfono, correo, mascotas y familiares del dueño; no guarda datos clínicos.
 
 ## Avisos de mañana

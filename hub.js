@@ -192,16 +192,16 @@ async function cargarEmpresas() {
   ta.forEach((t) => { const d = t.data(); if (d.estado !== ESTADO_FIN) abiertas[d.cliente_id] = (abiertas[d.cliente_id] || 0) + 1; });
   dc.forEach((x) => { const d = x.data(); docs[d.cliente_id] = (docs[d.cliente_id] || 0) + 1; });
   empresas = [];
-  cl.forEach((c) => { const d = c.data(); empresas.push({ id: c.id, nombre: d.nombre_empresa, cuit: d.cuit, abiertas: abiertas[c.id] || 0, docs: docs[c.id] || 0 }); });
+  cl.forEach((c) => { const d = c.data(); empresas.push({ id: c.id, nombre: d.nombre_empresa, cuit: d.cuit, masc: (d.mascotas || []).map((m) => m.nombre).join(', '), fam: (d.personas || []).map((p) => p.nombre).join(', '), abiertas: abiertas[c.id] || 0, docs: docs[c.id] || 0 }); });
   empresas.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 }
 function pintarEmpresas() {
   const q = ($('buscar-expediente').value || '').toLowerCase().trim();
   const modo = D().modoExp === 'buzon' ? 'buzon' : 'expediente';
-  const lista = empresas.filter((e) => !q || e.nombre.toLowerCase().includes(q) || String(e.cuit).includes(q));
+  const lista = empresas.filter((e) => !q || e.nombre.toLowerCase().includes(q) || String(e.cuit).includes(q) || `${e.masc} ${e.fam}`.toLowerCase().includes(q));
   $('lista-expedientes').innerHTML = lista.length ? lista.map((e) => `
     <button type="button" class="exp-card" data-act="${modo}" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">
-      <b>${esc(e.nombre)}</b><small>CUIT ${esc(e.cuit)}</small>
+      <b>${esc(e.nombre)}</b><small>CUIT ${esc(e.cuit)}</small>${e.masc ? `<small>Mascotas: ${esc(e.masc)}</small>` : ''}
       <span class="exp-meta"><span>${e.abiertas} ${e.abiertas === 1 ? 'proceso abierto' : 'procesos abiertos'}</span>${e.docs ? `<span class="exp-doc">${e.docs} ${e.docs === 1 ? 'documento por procesar' : 'documentos por procesar'}</span>` : ''}</span>
     </button>`).join('') : '<p class="vacio">No hay empresas que coincidan.</p>';
 }
@@ -450,10 +450,10 @@ function buscarEnInicio() {
   const q = $('hub-q').value.toLowerCase().trim();
   const out = $('hub-q-res');
   if (q.length < 2) { out.innerHTML = ''; return; }
-  const lista = empresas.filter((e) => e.nombre.toLowerCase().includes(q) || String(e.cuit).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§')).slice(0, 6);
+  const lista = empresas.filter((e) => e.nombre.toLowerCase().includes(q) || `${e.masc} ${e.fam}`.toLowerCase().includes(q) || String(e.cuit).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§')).slice(0, 6);
   out.innerHTML = lista.length ? lista.map((e) => `
     <div class="q-fila">
-      <div class="q-txt"><b>${esc(e.nombre)}</b><small>CUIT ${esc(e.cuit)} · ${e.abiertas} ${e.abiertas === 1 ? 'proceso abierto' : 'procesos abiertos'}${e.docs ? ` · ${e.docs} por procesar` : ''}</small></div>
+      <div class="q-txt"><b>${esc(e.nombre)}</b><small>CUIT ${esc(e.cuit)}${e.masc ? ' · Mascotas: ' + esc(e.masc) : ''} · ${e.abiertas} ${e.abiertas === 1 ? 'proceso abierto' : 'procesos abiertos'}${e.docs ? ` · ${e.docs} por procesar` : ''}</small></div>
       <div class="q-acc">
         <button type="button" class="btn-primary" data-act="expediente" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Expediente</button>
         <button type="button" class="btn-secundario" data-act="buzon" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Buzón</button>
@@ -484,7 +484,21 @@ window.mostrarFichaDatos = async function (id) {
   if (!turnos && !c.telefono && !c.email_contacto && !(c.mascotas || []).length && !(c.personas || []).length) return;
   const tel = String(c.telefono || '').replace(/\D/g, '');
   const nombreFicha = c.nombre_empresa || '';
-  let pers = c.personas || [];
+  let pers = c.personas || [], abierta = null;
+  const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dmy = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '') ? s.split('-').reverse().join('/') : '';
+  const dias = (s) => Math.round((new Date(s + 'T12:00:00') - new Date(hoyISO() + 'T12:00:00')) / 86400000);
+  const estadoLib = (x) => { const p = (x.libreta || []).map((e) => e.proxima).filter(Boolean).sort(); const futuras = p.filter((s) => dias(s) >= 0), vencidas = (x.libreta || []).filter((e) => e.proxima && dias(e.proxima) < 0 && !(x.libreta || []).some((o) => o !== e && o.tipo === e.tipo && o.fecha > e.fecha)); return { vencidas, prox: futuras[0] }; };
+  const guardarMasc = async (lista) => { await updateDoc(doc(D().db, 'clients', id), { mascotas: lista }); c.mascotas = lista; };
+  const TIPOS = ['Vacuna', 'Antirrábica', 'Desparasitación', 'Consulta', 'Cirugía', 'Peso', 'Otro'];
+  const libretaHTML = (x) => {
+    const ls = (x.libreta || []).slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')), st = estadoLib(x);
+    return `<div class="libreta"><h4>Libreta sanitaria · ${esc(x.nombre)}</h4>
+    ${st.vencidas.length ? `<div class="lib-alerta">Vencido: ${st.vencidas.map((e) => esc(e.tipo) + ' (' + dmy(e.proxima) + ')').join(', ')}</div>` : ''}${st.prox ? `<div class="lib-ok">Próximo vencimiento: ${dmy(st.prox)} · en ${dias(st.prox)} ${dias(st.prox) === 1 ? 'día' : 'días'}</div>` : ''}
+    <div class="lib-lista">${ls.length ? ls.map((e) => `<div class="lib-fila"><b>${dmy(e.fecha)}</b><span>${esc(e.tipo)}${e.detalle ? ' — ' + esc(e.detalle) : ''}${e.proxima ? `<small>Próxima: ${dmy(e.proxima)}</small>` : ''}</span><button data-le="${esc(e.id)}" aria-label="Quitar registro">×</button></div>`).join('') : '<i>Sin registros todavía.</i>'}</div>
+    <form class="libreta-alta" id="lib-form"><label>Qué<select id="lb-t">${TIPOS.map((t) => `<option>${t}</option>`).join('')}</select></label><label>Fecha<input id="lb-f" type="date" value="${hoyISO()}" required></label><label class="lb-det">Detalle (producto, peso, nota)<input id="lb-d" maxlength="120" placeholder="Ej. Sextuple, lote 123 / 12,4 kg"></label><label>Próxima<input id="lb-p" type="date"></label><button class="btn-secundario" type="submit">Guardar registro</button></form>
+    <button type="button" class="btn-secundario" id="lib-doc">Adjuntar certificado o foto (Buzón documental)</button></div>`;
+  };
   const pintar = (m) => {
     bloque.hidden = false;
     bloque.innerHTML = `<h3>Datos del cliente</h3>
@@ -492,15 +506,23 @@ window.mostrarFichaDatos = async function (id) {
     <div class="ficha-fila"><span>Responsable</span><b>${esc(nombreFicha)}</b></div>
     ${pers.length ? `<div class="ficha-fila"><span>Familiares y otros</span><div class="ficha-chips">${pers.map((x, i) => `<span class="ficha-chip">${esc(x.nombre)}${x.relacion ? ' · ' + esc(x.relacion) : ''}<button data-p="${i}" aria-label="Quitar ${esc(x.nombre)}">×</button></span>`).join('')}</div></div>` : ''}
     <form class="ficha-alta" id="ficha-fam"><input id="ff-n" placeholder="Agregar familiar u otra persona" maxlength="60" required><select id="ff-r">${['Esposo/a','Pareja','Hijo/a','Padre / madre','Hermano/a','Primo/a','Otro familiar','Vecino/a','Amigo/a','Otra relación'].map(r => `<option>${r}</option>`).join('')}</select><button class="btn-secundario" type="submit">+ Agregar</button></form>
-    ${turnos ? `<div class="ficha-fila"><span>Mascotas</span><div class="ficha-chips">${m.length ? m.map((x, i) => `<span class="ficha-chip">${esc(x.nombre)}${x.tipo ? ' · ' + esc(x.tipo) : ''}<button data-q="${i}" aria-label="Quitar ${esc(x.nombre)}">×</button></span>`).join('') : '<i>ninguna cargada</i>'}</div></div>
+    ${turnos ? `<div class="ficha-fila"><span>Mascotas</span><div class="ficha-chips">${m.length ? m.map((x, i) => `<span class="ficha-chip"${abierta === i ? ' data-sel="1"' : ''}><button class="ficha-nom" data-l="${i}" title="Abrir libreta sanitaria">${esc(x.nombre)}${x.tipo ? ' · ' + esc(x.tipo) : ''}${estadoLib(x).vencidas.length ? ' ⚠' : ''}</button><button data-q="${i}" aria-label="Quitar ${esc(x.nombre)}">×</button></span>`).join('') : '<i>ninguna cargada</i>'}</div></div>
     <form class="ficha-alta" id="ficha-masc"><input id="fm-n" placeholder="Nombre de la mascota" maxlength="60" required><select id="fm-t"><option>Perro</option><option>Gato</option><option>Otro</option></select><button class="btn-secundario" type="submit">+ Agregar</button></form>
+    ${abierta !== null && m[abierta] ? libretaHTML(m[abierta]) : ''}
     <a class="btn-secundario" style="text-decoration:none;display:inline-flex;align-items:center;margin-top:8px" href="turnos/panel.html?cliente=${encodeURIComponent(id)}">Ver turnos de este cliente</a>` : ''}`;
     bloque.querySelector('#ficha-contacto').onsubmit = async (ev) => { ev.preventDefault(); const t = bloque.querySelector('#fc-t').value.trim(), e = bloque.querySelector('#fc-e').value.trim().toLowerCase(); try { await updateDoc(doc(D().db, 'clients', id), { telefono: t, email_contacto: e }); c.telefono = t; c.email_contacto = e; pintar(m); D().aviso && D().aviso('Datos guardados.', 'ok'); } catch (x) { D().aviso && D().aviso('No se pudieron guardar los datos.', 'error'); } };
     bloque.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => { const x = pers[+b.dataset.p]; try { await updateDoc(doc(D().db, 'clients', id), { personas: arrayRemove(x) }); pers = pers.filter((_, i) => i !== +b.dataset.p); c.personas = pers; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo quitar.', 'error'); } });
     bloque.querySelector('#ficha-fam').onsubmit = async (ev) => { ev.preventDefault(); const n = bloque.querySelector('#ff-n').value.trim(); if (!n) return; const nueva = { nombre: n, relacion: bloque.querySelector('#ff-r').value, telefono: '' }; try { await updateDoc(doc(D().db, 'clients', id), { personas: arrayUnion(nueva) }); pers = [...pers, nueva]; c.personas = pers; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo guardar.', 'error'); } };
+    bloque.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { abierta = abierta === +b.dataset.l ? null : +b.dataset.l; pintar(m); });
+    const lf = bloque.querySelector('#lib-form');
+    if (lf) {
+      lf.onsubmit = async (ev) => { ev.preventDefault(); const f = bloque.querySelector('#lb-f').value; if (!f) return; const reg = { id: 'r' + Date.now().toString(36), tipo: bloque.querySelector('#lb-t').value, fecha: f, detalle: bloque.querySelector('#lb-d').value.trim(), proxima: bloque.querySelector('#lb-p').value || '' }; const nueva = m.map((x, i) => i === abierta ? { ...x, libreta: [...(x.libreta || []), reg] } : x); try { await guardarMasc(nueva); m = nueva; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo guardar el registro.', 'error'); } };
+      bloque.querySelectorAll('[data-le]').forEach(b => b.onclick = async () => { const nueva = m.map((x, i) => i === abierta ? { ...x, libreta: (x.libreta || []).filter((e) => e.id !== b.dataset.le) } : x); try { await guardarMasc(nueva); m = nueva; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo quitar.', 'error'); } });
+      bloque.querySelector('#lib-doc').onclick = () => { if (window.abrirBuzon) window.abrirBuzon(); };
+    }
     const f = bloque.querySelector('#ficha-masc');
-    if (f) f.onsubmit = async (ev) => { ev.preventDefault(); const n = bloque.querySelector('#fm-n').value.trim(); if (!n) return; const nueva = { nombre: n, tipo: bloque.querySelector('#fm-t').value }; try { await updateDoc(doc(D().db, 'clients', id), { mascotas: arrayUnion(nueva) }); m = [...m, nueva]; c.mascotas = m; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo guardar la mascota.', 'error'); } };
-    bloque.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => { const x = m[+b.dataset.q]; try { await updateDoc(doc(D().db, 'clients', id), { mascotas: arrayRemove(x) }); m = m.filter((_, i) => i !== +b.dataset.q); c.mascotas = m; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo quitar la mascota.', 'error'); } });
+    if (f) f.onsubmit = async (ev) => { ev.preventDefault(); const n = bloque.querySelector('#fm-n').value.trim(); if (!n) return; const nueva = { nombre: n, tipo: bloque.querySelector('#fm-t').value }; try { const lista = [...m, nueva]; await guardarMasc(lista); m = lista; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo guardar la mascota.', 'error'); } };
+    bloque.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => { const x = m[+b.dataset.q]; try { const lista = m.filter((_, i) => i !== +b.dataset.q); await guardarMasc(lista); m = lista; abierta = null; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo quitar la mascota.', 'error'); } });
   };
   pintar(c.mascotas || []);
 };
