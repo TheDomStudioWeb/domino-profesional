@@ -60,7 +60,7 @@ footer{text-align:center;color:var(--mut);font-size:12.5px;padding:22px 0 0;marg
 .hp{position:absolute;left:-9999px}
 @media(min-width:520px){.hs{grid-template-columns:repeat(5,1fr)}}
 </style></head><body><div class="w">
-<header><div style="min-width:0"><h1 id="neg">Agenda de turnos</h1><small id="who"></small></div><div style="display:flex;gap:8px;align-items:center;flex:0 0 auto"><a class="volv" href="../index.html" id="vhub">‹ Volver</a><button class="salir" id="salir" hidden>Salir</button></div></header>
+<header><div style="min-width:0"><h1 id="neg">Agenda de turnos</h1><small id="who"></small></div><div style="display:flex;gap:8px;align-items:center;flex:0 0 auto"><button class="volv" id="vhub">‹ Inicio</button><button class="salir" id="salir" hidden>Salir</button></div></header>
 <main id="m" aria-live="polite"><div class="cargando">Cargando…</div></main>
 <footer>Desarrollado por The DOM Studio Web · WhatsApp 261-3431216 · thedomstudioweb@gmail.com</footer>
 </div>
@@ -250,6 +250,22 @@ function pMas(res) {
   $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(link); $('#cp').textContent = '¡Copiado!'; } catch (e) { $('#cp').textContent = 'Seleccione y copie el enlace'; } };
   const bg = $('#bg'); if (bg) bg.onclick = async () => { if ($('#bh').value < $('#bd').value) return pMas('<div class="err">La fecha final es anterior a la inicial.</div>'); bg.disabled = true; bg.textContent = 'Guardando…'; const r = await api('guardar_bloqueo', { recurso_id: $('#bp').value, desde: $('#bd').value + ' 00:00', hasta: $('#bh').value + ' 23:59', motivo: $('#bm').value }); if (!r.ok) return pMas(err(r.error)); await cargarAgenda(true); pMas('<div class="ok"><b>Listo.</b> Horarios bloqueados.</div>'); };
 }
+// Botón del encabezado: vuelve un paso atrás hasta la agenda; en la agenda lleva al Hub (Inicio).
+function volverCtx() {
+  const b = $('#vhub'); if (!b) return;
+  const enRaiz = !S.tok || (S.tab === 'agenda' && !S.det);
+  b.textContent = enRaiz ? '‹ Inicio' : '‹ Volver';
+  b.setAttribute('aria-label', enRaiz ? 'Ir al inicio de DOMino Profesional' : 'Volver a la agenda');
+}
+$('#vhub').onclick = () => {
+  if (S.det) { S.det = null; return pintar(); }
+  if (S.tab === 'nuevo' && (S.nu.sv || S.nu.listo)) { const era = !!S.nu.listo; S.nu = {}; if (era) S.tab = 'agenda'; return pintar(); }
+  if (S.tab !== 'agenda') { S.tab = 'agenda'; return pintar(); }
+  location.href = '../index.html';
+};
+new MutationObserver(volverCtx).observe(M, { childList: true });
+volverCtx();
+
 // Actualiza sola la agenda: al volver a la pestaña y cada minuto (solo si está mirando la agenda y no está escribiendo).
 let ultimo = Date.now();
 async function refrescar() {
