@@ -43,6 +43,10 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 1. **Validador de CUIT / CUIL:** controla el dígito verificador y dice qué tipo de persona indica el prefijo. No confirma que la persona esté inscripta.
 2. **Calculadora de IVA:** de neto a total o de total a neto, con 21 %, 10,5 %, 27 % o exento.
 3. **Hoja unificada A4:** pone frente y dorso de un documento en una sola hoja; se guarda como imagen o se imprime.
+4. **Unificador de archivos en PDF:** une fotos (JPG, PNG), PDF, Word (.docx) y Excel (.xlsx, .xls, .csv) en un solo PDF, en el orden que se elija (flechas arriba/abajo, quitar, girar fotos). También permite sacar una foto con la cámara del celular. Se arma en el dispositivo: no se sube nada. Solo para el personal del estudio (Senior, Mid Senior y Asistente), no para clientes.
+   - Los PDF se copian tal cual. Las fotos se acomodan una por hoja. Word y Excel se convierten: se conservan texto, títulos, listas, tablas e imágenes; se pierden colores, encabezados, formatos especiales, fórmulas y gráficos. Los símbolos raros y emojis aparecen como «?».
+   - No se pueden unir: PowerPoint, ZIP/RAR, audio, video ni Word antiguo (.doc). Se avisa por archivo y conviene exportarlos a PDF desde su programa.
+   - Al terminar: Guardar (descarga) o Compartir (menú del celular). Todavía no se guarda directo en el expediente: se descarga y se sube al buzón o a la carpeta del cliente.
 
 ## Qué responder ante dudas frecuentes
 - «No veo Mi Cartera»: depende del nivel; los asistentes no la ven.

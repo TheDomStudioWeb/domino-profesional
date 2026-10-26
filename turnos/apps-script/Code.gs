@@ -1,0 +1,411 @@
+/**
+ * DOMino Turnos — Backend (Google Apps Script) · v0.2
+ * ------------------------------------------------------------------
+ * La planilla es la base de datos; este script es la ÚNICA puerta.
+ * Una planilla + un script por negocio. Costo cero.
+ *
+ * Hojas: config · recursos · servicios · horarios · bloqueos · turnos · slots · usuarios
+ *
+ * Todo entra por POST (texto JSON): { accion, ...datos, token? }
+ *   Públicas (sin sesión): config_publica, horarios_libres, reservar, ver_turno, cancelar_turno
+ *   Del personal (con token): login, agenda, crear_turno, cambiar_estado, reprogramar,
+ *                             guardar_bloqueo, recordatorios_manana, marcar_avisado
+ * Doble reserva: LockService + hoja «slots» (una fila por tramo ocupado).
+ * Despliegue: Implementar > Aplicación web > Ejecutar como: yo · Acceso: cualquier persona.
+ */
+
+const DIAS_TOKEN = 30;
+const MAX_INTENTOS_LOGIN = 5;
+const MIN_BLOQUEO_LOGIN = 10;
+const HASH_VUELTAS = 1000;
+const MAX_RESERVAS_TEL_DIA = 3;
+const ROLES = ['Senior', 'Mid Senior', 'Asistente', 'Profesional'];
+const ROLES_GESTION = ['Senior', 'Mid Senior'];
+const ROLES_AGENDA_TOTAL = ['Senior', 'Mid Senior', 'Asistente'];
+const ESTADOS = ['Por confirmar', 'Confirmado', 'En sala', 'Atendido', 'Cancelado', 'No vino', 'Reprogramado'];
+const ESTADOS_ACTIVOS = ['Por confirmar', 'Confirmado', 'En sala'];
+const TRANSICIONES = {
+  'Por confirmar': ['Confirmado', 'Cancelado'],
+  'Confirmado': ['En sala', 'Cancelado', 'No vino'],
+  'En sala': ['Atendido', 'Cancelado'],
+  'Atendido': [], 'Cancelado': [], 'No vino': [], 'Reprogramado': []
+};
+const HOJAS = { config: 'config', recursos: 'recursos', servicios: 'servicios', horarios: 'horarios', bloqueos: 'bloqueos', turnos: 'turnos', slots: 'slots', usuarios: 'usuarios' };
+const COL_TURNOS = ['id', 'codigo', 'estado', 'fecha', 'hora', 'duracion_min', 'recurso_id', 'servicio_id', 'cliente_id', 'contacto_nombre', 'contacto_tel', 'contacto_email', 'sujeto_nombre', 'sujeto_tipo', 'nota', 'motivo_cancelacion', 'reprogramado_de', 'origen', 'consentimiento', 'avisado', 'creado', 'actualizado'];
+const CAMPOS_TEXTO = ['fecha', 'hora', 'contacto_tel', 'codigo', 'desde', 'hasta'];
+
+// ── Entrada ───────────────────────────────────────────────────────
+function doGet() { return json_({ ok: true, servicio: 'DOMino Turnos' }); }
+
+function doPost(e) {
+  let p;
+  try { p = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (x) { return json_({ ok: false, error: 'pedido_invalido' }); }
+  try { return json_(despachar_(p)); }
+  catch (err) { if (!(err && err.codigo)) console.error(err && err.stack || err); return json_({ ok: false, error: err && err.codigo ? err.codigo : 'error_interno' }); }
+}
+
+function falla_(codigo) { const e = new Error(codigo); e.codigo = codigo; return e; }
+
+function despachar_(p) {
+  const a = String(p.accion || '');
+  const PUB = { config_publica: configPublica_, horarios_libres: horariosLibres_, reservar: reservar_, ver_turno: verTurno_, cancelar_turno: cancelarTurno_ };
+  if (PUB[a]) return PUB[a](p);
+  if (a === 'login') return login_(p.email, p.clave);
+  const u = validarToken_(p.token);
+  if (!u) return { ok: false, error: 'sesion_invalida' };
+  const PRIV = { agenda: agenda_, crear_turno: crearTurno_, cambiar_estado: cambiarEstado_, reprogramar: reprogramar_, guardar_bloqueo: guardarBloqueo_, recordatorios_manana: recordatoriosManana_, marcar_avisado: marcarAvisado_ };
+  if (!PRIV[a]) return { ok: false, error: 'accion_desconocida' };
+  return PRIV[a](p, u);
+}
+
+// ── Configuración y datos base ───────────────────────────────────
+function config_() {
+  const c = { nombre: 'Negocio', paso_min: 30, modo_reserva: 'solicitud', anticipacion_min_horas: 2, cancelacion_limite_horas: 4, ventana_dias: 30, rubro: 'veterinaria', telefono: '' };
+  leerHoja_(HOJAS.config).forEach(r => { if (r.clave) c[String(r.clave)] = r.valor; });
+  ['paso_min', 'anticipacion_min_horas', 'cancelacion_limite_horas', 'ventana_dias'].forEach(k => c[k] = Number(c[k]));
+  return c;
+}
+function activos_(nombre) { return leerHoja_(nombre).filter(r => String(r.activo).toLowerCase() !== 'no' && String(r.activo).toLowerCase() !== 'false'); }
+function lista_(v) { return String(v || '').split(',').map(s => s.trim()).filter(Boolean); }
+
+function configPublica_() {
+  const c = config_();
+  const servicios = activos_(HOJAS.servicios).filter(s => String(s.publico).toLowerCase() !== 'no');
+  const recursos = activos_(HOJAS.recursos).filter(r => String(r.tipo) !== 'sala' || true);
+  return { ok: true, negocio: { nombre: c.nombre, rubro: c.rubro, telefono: c.telefono, modo_reserva: c.modo_reserva, ventana_dias: c.ventana_dias, cancelacion_limite_horas: c.cancelacion_limite_horas },
+    servicios: servicios.map(s => ({ id: String(s.id), nombre: s.nombre, duracion_min: Number(s.duracion_min), recursos: lista_(s.recursos) })),
+    recursos: recursos.map(r => ({ id: String(r.id), nombre: r.nombre, tipo: r.tipo, color: r.color })) };
+}
+
+// ── Tiempo (todo en minutos "de pared", sin depender de la zona del servidor) ──
+function aMin_(fecha, hora) { const f = String(fecha).split('-').map(Number), h = String(hora).split(':').map(Number); return Date.UTC(f[0], f[1] - 1, f[2], h[0], h[1] || 0) / 60000; }
+function deMin_(m) { const d = new Date(m * 60000); const z = n => ('0' + n).slice(-2); return { fecha: d.getUTCFullYear() + '-' + z(d.getUTCMonth() + 1) + '-' + z(d.getUTCDate()), hora: z(d.getUTCHours()) + ':' + z(d.getUTCMinutes()) }; }
+function ahoraMin_() { const t = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm').split(' '); return aMin_(t[0], t[1]); }
+function diaSemana_(fecha) { const f = String(fecha).split('-').map(Number); return new Date(Date.UTC(f[0], f[1] - 1, f[2])).getUTCDay(); } // 0 = domingo
+function validaFecha_(f) { return /^\d{4}-\d{2}-\d{2}$/.test(String(f)); }
+function validaHora_(h) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(h)); }
+function claveSlot_(recurso, min) { const t = deMin_(min); return recurso + '|' + t.fecha + '|' + t.hora; }
+
+// ── Disponibilidad ───────────────────────────────────────────────
+// Devuelve los inicios libres de un recurso/servicio para una fecha.
+function inicioLibres_(c, serv, recursoId, fecha, ocupados, horarios, bloqueos) {
+  const out = [], dur = Number(serv.duracion_min), paso = c.paso_min;
+  const dow = diaSemana_(fecha), ahora = ahoraMin_();
+  const minInicio = ahora + c.anticipacion_min_horas * 60, maxInicio = ahora + c.ventana_dias * 1440;
+  horarios.filter(h => String(h.recurso_id) === String(recursoId) && Number(h.dia_semana) === dow).forEach(h => {
+    const d = aMin_(fecha, h.desde), ha = aMin_(fecha, h.hasta);
+    for (let ini = d; ini + dur <= ha; ini += paso) {
+      if (ini < minInicio || ini > maxInicio) continue;
+      let libre = true;
+      for (let t = ini; t < ini + dur; t += paso) { if (ocupados[claveSlot_(recursoId, t)]) { libre = false; break; } }
+      if (libre && enBloqueo_(bloqueos, recursoId, ini, ini + dur)) libre = false;
+      if (libre) out.push(deMin_(ini).hora);
+    }
+  });
+  return out;
+}
+function enBloqueo_(bloqueos, recursoId, ini, fin) {
+  return bloqueos.some(b => (String(b.recurso_id) === String(recursoId) || String(b.recurso_id) === '*' || String(b.recurso_id) === '') && ini < bloqueoMin_(b.hasta, true) && fin > bloqueoMin_(b.desde, false));
+}
+function bloqueoMin_(v, fin) { const s = String(v); const p = s.split(' '); return aMin_(p[0], p[1] || (fin ? '23:59' : '00:00')); }
+
+function mapaOcupados_() {
+  const m = {};
+  leerHoja_(HOJAS.slots).forEach(s => { m[String(s.clave)] = String(s.turno_id); });
+  return m;
+}
+
+function horariosLibres_(p) {
+  const c = config_();
+  const serv = activos_(HOJAS.servicios).find(s => String(s.id) === String(p.servicio_id));
+  if (!serv) throw falla_('servicio_invalido');
+  if (!validaFecha_(p.desde)) throw falla_('fecha_invalida');
+  const dias = Math.min(Math.max(Number(p.dias) || 7, 1), 31);
+  const recs = (p.recurso_id ? [String(p.recurso_id)] : lista_(serv.recursos)).filter(r => lista_(serv.recursos).indexOf(r) > -1);
+  const ocupados = mapaOcupados_(), horarios = leerHoja_(HOJAS.horarios), bloqueos = leerHoja_(HOJAS.bloqueos);
+  const res = [];
+  for (let i = 0; i < dias; i++) {
+    const f = deMin_(aMin_(p.desde, '00:00') + i * 1440).fecha;
+    const porRec = {};
+    recs.forEach(r => { const h = inicioLibres_(c, serv, r, f, ocupados, horarios, bloqueos); if (h.length) porRec[r] = h; });
+    if (Object.keys(porRec).length) res.push({ fecha: f, recursos: porRec });
+  }
+  return { ok: true, dias: res };
+}
+
+// ── Núcleo: ocupar horario (con cerrojo) ─────────────────────────
+function ocuparYGuardar_(datos, opciones) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) throw falla_('sistema_ocupado');
+  try {
+    const c = config_();
+    const serv = activos_(HOJAS.servicios).find(s => String(s.id) === String(datos.servicio_id));
+    if (!serv) throw falla_('servicio_invalido');
+    if (lista_(serv.recursos).indexOf(String(datos.recurso_id)) < 0) throw falla_('recurso_invalido');
+    if (!activos_(HOJAS.recursos).some(r => String(r.id) === String(datos.recurso_id))) throw falla_('recurso_invalido');
+    if (!validaFecha_(datos.fecha) || !validaHora_(datos.hora)) throw falla_('fecha_invalida');
+    const dur = Number(serv.duracion_min), ini = aMin_(datos.fecha, datos.hora);
+    if (ini % c.paso_min !== 0) throw falla_('horario_invalido');
+    const libres = inicioLibres_(c, serv, datos.recurso_id, datos.fecha, mapaOcupados_(), leerHoja_(HOJAS.horarios), leerHoja_(HOJAS.bloqueos));
+    const fuerza = opciones && opciones.forzar;
+    if (!fuerza) { if (libres.indexOf(datos.hora) < 0) throw falla_(horaOcupada_(datos, dur, c) ? 'horario_ocupado' : 'fuera_de_horario'); }
+    else if (horaOcupada_(datos, dur, c)) throw falla_('horario_ocupado');
+    const id = 'T' + Utilities.getUuid().replace(/-/g, '').slice(0, 10);
+    const codigo = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+    const filaSlots = [];
+    for (let t = ini; t < ini + dur; t += c.paso_min) filaSlots.push([claveSlot_(datos.recurso_id, t), id]);
+    const ahora = new Date().toISOString();
+    const t = Object.assign({ id: id, codigo: codigo, duracion_min: dur, creado: ahora, actualizado: ahora, avisado: '' }, datos);
+    agregarFila_(HOJAS.turnos, COL_TURNOS, t);
+    const hs = obtenerHoja_(HOJAS.slots);
+    asegurarColumnas_(hs, ['clave', 'turno_id']);
+    filaSlots.forEach(f => hs.appendRow(f));
+    return t;
+  } finally { lock.releaseLock(); }
+}
+function horaOcupada_(d, dur, c) {
+  const ocup = mapaOcupados_(), ini = aMin_(d.fecha, d.hora);
+  for (let t = ini; t < ini + dur; t += c.paso_min) if (ocup[claveSlot_(d.recurso_id, t)]) return true;
+  return false;
+}
+function liberarSlots_(turnoId) { // se llama dentro del cerrojo
+  const sh = obtenerHoja_(HOJAS.slots), datos = sh.getDataRange().getValues();
+  for (let i = datos.length - 1; i >= 1; i--) if (String(datos[i][1]) === String(turnoId)) sh.deleteRow(i + 1);
+}
+
+// ── Reserva pública ──────────────────────────────────────────────
+function reservar_(p) {
+  if (p.web) return { ok: true, codigo: 'x' }; // campo trampa: un robot lo completa
+  const c = config_();
+  const nombre = limpiar_(p.nombre, 80), tel = String(p.tel || '').replace(/[^\d+]/g, '').slice(0, 20), email = limpiar_(p.email, 80);
+  if (nombre.length < 2) throw falla_('falta_nombre');
+  if (tel.length < 6) throw falla_('falta_telefono');
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw falla_('email_invalido');
+  if (!p.consentimiento) throw falla_('falta_consentimiento');
+  const cache = CacheService.getScriptCache(), kT = 'res_' + tel;
+  const n = Number(cache.get(kT) || 0);
+  if (n >= MAX_RESERVAS_TEL_DIA) throw falla_('demasiadas_reservas');
+  const sv = activos_(HOJAS.servicios).find(x => String(x.id) === String(p.servicio_id));
+  if (!sv || String(sv.publico).toLowerCase() === 'no') throw falla_('servicio_invalido');
+  const estado = c.modo_reserva === 'inmediata' ? 'Confirmado' : 'Por confirmar';
+  const t = ocuparYGuardar_({ estado: estado, fecha: p.fecha, hora: p.hora, recurso_id: p.recurso_id, servicio_id: p.servicio_id, contacto_nombre: nombre, contacto_tel: tel, contacto_email: email, sujeto_nombre: limpiar_(p.sujeto_nombre, 60), sujeto_tipo: limpiar_(p.sujeto_tipo, 30), nota: limpiar_(p.nota, 300), origen: 'web', consentimiento: 'si' });
+  cache.put(kT, String(n + 1), 86400);
+  avisoCorreo_(t, estado === 'Confirmado' ? 'confirmado' : 'recibido', c);
+  return { ok: true, codigo: t.codigo, estado: estado, fecha: t.fecha, hora: t.hora };
+}
+function limpiar_(v, max) { return String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max); }
+
+function turnoPorCodigo_(codigo) {
+  if (!codigo || String(codigo).length < 12) return null;
+  return leerHoja_(HOJAS.turnos).find(t => String(t.codigo) === String(codigo)) || null;
+}
+function verTurno_(p) {
+  const t = turnoPorCodigo_(p.codigo); if (!t) throw falla_('turno_no_encontrado');
+  const serv = leerHoja_(HOJAS.servicios).find(s => String(s.id) === String(t.servicio_id)) || {};
+  const rec = leerHoja_(HOJAS.recursos).find(r => String(r.id) === String(t.recurso_id)) || {};
+  const c = config_();
+  return { ok: true, turno: { estado: t.estado, fecha: t.fecha, hora: t.hora, servicio: serv.nombre, profesional: rec.nombre, sujeto: t.sujeto_nombre, puede_cancelar: puedeCancelar_(t, c) }, negocio: { nombre: c.nombre, telefono: c.telefono } };
+}
+function puedeCancelar_(t, c) { return ESTADOS_ACTIVOS.indexOf(t.estado) > -1 && aMin_(t.fecha, t.hora) - ahoraMin_() >= c.cancelacion_limite_horas * 60; }
+function cancelarTurno_(p) {
+  const t = turnoPorCodigo_(p.codigo); if (!t) throw falla_('turno_no_encontrado');
+  if (!puedeCancelar_(t, config_())) throw falla_(ESTADOS_ACTIVOS.indexOf(t.estado) > -1 ? 'fuera_de_plazo' : 'estado_invalido');
+  cambiarEstadoInterno_(t.id, 'Cancelado', 'Cancelado por el cliente');
+  return { ok: true };
+}
+
+// ── Cambios de estado (cerrojo) ──────────────────────────────────
+function cambiarEstadoInterno_(id, nuevo, motivo) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) throw falla_('sistema_ocupado');
+  try {
+    const sh = obtenerHoja_(HOJAS.turnos), fila = buscarFila_(sh, id);
+    if (fila < 0) throw falla_('turno_no_encontrado');
+    const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim().toLowerCase());
+    const val = k => sh.getRange(fila, headers.indexOf(k) + 1);
+    const actual = String(val('estado').getValue());
+    if (TRANSICIONES[actual].indexOf(nuevo) < 0) throw falla_('estado_invalido');
+    if (nuevo === 'No vino' && aMin_(String(val('fecha').getValue()), String(val('hora').getValue())) > ahoraMin_()) throw falla_('aun_no_es_la_hora');
+    val('estado').setValue(nuevo);
+    if (motivo) val('motivo_cancelacion').setValue(motivo);
+    val('actualizado').setValue(new Date().toISOString());
+    if (nuevo === 'Cancelado' || nuevo === 'No vino' || nuevo === 'Reprogramado') liberarSlots_(id);
+    return true;
+  } finally { lock.releaseLock(); }
+}
+
+// ── Personal ─────────────────────────────────────────────────────
+function recursoDe_(u) { const r = leerHoja_(HOJAS.recursos).find(x => String(x.usuario_email).toLowerCase() === String(u.email).toLowerCase()); return r ? String(r.id) : null; }
+function puedeVer_(u, t) { return ROLES_AGENDA_TOTAL.indexOf(u.rol) > -1 || (u.rol === 'Profesional' && recursoDe_(u) === String(t.recurso_id)); }
+
+function agenda_(p, u) {
+  if (!validaFecha_(p.desde) || !validaFecha_(p.hasta)) throw falla_('fecha_invalida');
+  const servs = leerHoja_(HOJAS.servicios);
+  const turnos = leerHoja_(HOJAS.turnos).filter(t => t.fecha >= p.desde && t.fecha <= p.hasta && puedeVer_(u, t)).map(t => {
+    const s = servs.find(x => String(x.id) === String(t.servicio_id)) || {};
+    return Object.assign({}, t, { servicio: s.nombre });
+  });
+  return { ok: true, turnos: turnos, recursos: leerHoja_(HOJAS.recursos), servicios: servs, bloqueos: leerHoja_(HOJAS.bloqueos), config: config_() };
+}
+function crearTurno_(p, u) {
+  if (u.rol === 'Profesional' && recursoDe_(u) !== String(p.recurso_id)) throw falla_('sin_permiso');
+  const t = ocuparYGuardar_({ estado: 'Confirmado', fecha: p.fecha, hora: p.hora, recurso_id: p.recurso_id, servicio_id: p.servicio_id, cliente_id: limpiar_(p.cliente_id, 40), contacto_nombre: limpiar_(p.nombre, 80), contacto_tel: String(p.tel || '').replace(/[^\d+]/g, '').slice(0, 20), contacto_email: limpiar_(p.email, 80), sujeto_nombre: limpiar_(p.sujeto_nombre, 60), sujeto_tipo: limpiar_(p.sujeto_tipo, 30), nota: limpiar_(p.nota, 300), origen: 'recepcion', consentimiento: p.consentimiento ? 'si' : '' }, { forzar: !!p.forzar && ROLES_AGENDA_TOTAL.indexOf(u.rol) > -1 });
+  return { ok: true, id: t.id, codigo: t.codigo };
+}
+function turnoPorId_(id) { return leerHoja_(HOJAS.turnos).find(t => String(t.id) === String(id)); }
+function cambiarEstado_(p, u) {
+  const t = turnoPorId_(p.id); if (!t) throw falla_('turno_no_encontrado');
+  if (!puedeVer_(u, t)) throw falla_('sin_permiso');
+  if (ESTADOS.indexOf(p.estado) < 0 || p.estado === 'Reprogramado') throw falla_('estado_invalido');
+  cambiarEstadoInterno_(t.id, p.estado, p.estado === 'Cancelado' ? limpiar_(p.motivo || 'Cancelado por el negocio', 200) : '');
+  if (p.estado === 'Confirmado') avisoCorreo_(turnoPorId_(t.id), 'confirmado', config_());
+  return { ok: true };
+}
+function reprogramar_(p, u) {
+  const t = turnoPorId_(p.id); if (!t) throw falla_('turno_no_encontrado');
+  if (!puedeVer_(u, t)) throw falla_('sin_permiso');
+  if (ESTADOS_ACTIVOS.indexOf(t.estado) < 0) throw falla_('estado_invalido');
+  // primero se reserva el nuevo horario; recién después se libera el viejo
+  const nuevo = ocuparYGuardar_({ estado: 'Confirmado', fecha: p.fecha, hora: p.hora, recurso_id: p.recurso_id || t.recurso_id, servicio_id: t.servicio_id, cliente_id: t.cliente_id, contacto_nombre: t.contacto_nombre, contacto_tel: String(t.contacto_tel), contacto_email: t.contacto_email, sujeto_nombre: t.sujeto_nombre, sujeto_tipo: t.sujeto_tipo, nota: t.nota, reprogramado_de: t.id, origen: t.origen, consentimiento: t.consentimiento });
+  cambiarEstadoInterno_(t.id, 'Cancelado', 'Reprogramado'); // TRANSICIONES no permite 'Reprogramado' directo desde activos
+  marcarReprogramado_(t.id);
+  return { ok: true, id: nuevo.id, codigo: nuevo.codigo };
+}
+function marcarReprogramado_(id) {
+  const sh = obtenerHoja_(HOJAS.turnos), fila = buscarFila_(sh, id);
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim().toLowerCase());
+  sh.getRange(fila, headers.indexOf('estado') + 1).setValue('Reprogramado');
+}
+function guardarBloqueo_(p, u) {
+  if (ROLES_GESTION.indexOf(u.rol) < 0) throw falla_('sin_permiso');
+  const lock = LockService.getScriptLock(); if (!lock.tryLock(15000)) throw falla_('sistema_ocupado');
+  try { agregarFila_(HOJAS.bloqueos, ['id', 'recurso_id', 'desde', 'hasta', 'motivo'], { id: 'B' + Utilities.getUuid().slice(0, 8), recurso_id: p.recurso_id || '*', desde: p.desde, hasta: p.hasta, motivo: limpiar_(p.motivo, 100) }); }
+  finally { lock.releaseLock(); }
+  return { ok: true };
+}
+
+// ── Recordatorios ────────────────────────────────────────────────
+function mananaTxt_() { return deMin_(ahoraMin_() + 1440).fecha; }
+function recordatoriosManana_(p, u) {
+  const m = mananaTxt_(), servs = leerHoja_(HOJAS.servicios), c = config_();
+  const lista = leerHoja_(HOJAS.turnos).filter(t => t.fecha === m && ESTADOS_ACTIVOS.indexOf(t.estado) > -1 && puedeVer_(u, t)).sort((a, b) => String(a.hora).localeCompare(String(b.hora))).map(t => {
+    const s = servs.find(x => String(x.id) === String(t.servicio_id)) || {};
+    return { id: t.id, hora: t.hora, nombre: t.contacto_nombre, tel: String(t.contacto_tel), sujeto: t.sujeto_nombre, servicio: s.nombre, avisado: t.avisado,
+      mensaje: 'Hola ' + t.contacto_nombre + ', le recordamos su turno de mañana a las ' + t.hora + ' en ' + c.nombre + (t.sujeto_nombre ? ' (' + t.sujeto_nombre + ')' : '') + '. Si no puede venir, avísenos. ¡Gracias!' };
+  });
+  return { ok: true, fecha: m, turnos: lista };
+}
+function marcarAvisado_(p, u) {
+  const t = turnoPorId_(p.id); if (!t || !puedeVer_(u, t)) throw falla_('sin_permiso');
+  const sh = obtenerHoja_(HOJAS.turnos), fila = buscarFila_(sh, t.id);
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(h => String(h).trim().toLowerCase());
+  sh.getRange(fila, headers.indexOf('avisado') + 1).setValue(p.via === 'correo' ? 'correo' : 'whatsapp');
+  return { ok: true };
+}
+// Disparador diario (configurarDisparador): correo automático a quien dio su correo y consintió
+function enviarRecordatorios() {
+  const c = config_(), m = mananaTxt_();
+  leerHoja_(HOJAS.turnos).filter(t => t.fecha === m && ESTADOS_ACTIVOS.indexOf(t.estado) > -1 && t.contacto_email && t.consentimiento === 'si' && !t.avisado).forEach(t => {
+    if (MailApp.getRemainingDailyQuota() < 5) return;
+    if (avisoCorreo_(t, 'recordatorio', c)) { const sh = obtenerHoja_(HOJAS.turnos), fila = buscarFila_(sh, t.id), h = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(x => String(x).trim().toLowerCase()); sh.getRange(fila, h.indexOf('avisado') + 1).setValue('correo'); }
+  });
+}
+function configurarDisparador() {
+  ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'enviarRecordatorios').forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('enviarRecordatorios').timeBased().everyDays(1).atHour(18).create();
+}
+function avisoCorreo_(t, tipo, c) {
+  if (!t || !t.contacto_email || t.consentimiento !== 'si') return false;
+  const asunto = { recibido: 'Recibimos su solicitud de turno', confirmado: 'Turno confirmado', recordatorio: 'Recordatorio de turno de mañana' }[tipo];
+  const cuerpo = 'Hola ' + t.contacto_nombre + ',\n\n' + ({ recibido: 'recibimos su solicitud para el ' + t.fecha + ' a las ' + t.hora + '. Le confirmaremos a la brevedad.', confirmado: 'su turno quedó confirmado para el ' + t.fecha + ' a las ' + t.hora + '.', recordatorio: 'le recordamos su turno de mañana (' + t.fecha + ') a las ' + t.hora + '.' }[tipo]) + '\n\n' + c.nombre + (c.telefono ? ' · ' + c.telefono : '');
+  try { MailApp.sendEmail(t.contacto_email, asunto, cuerpo); return true; } catch (e) { console.warn('Correo no enviado: ' + e); return false; }
+}
+
+// ── Usuarios, claves y sesión (mismo esquema que el Hub de X5) ───
+function iguales_(a, b) { a = String(a); b = String(b); let d = a.length ^ b.length; for (let i = 0; i < Math.min(a.length, b.length); i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
+function esHashClave_(v) { return /^h1\$[A-Za-z0-9_-]+\$[A-Za-z0-9_-]+$/.test(String(v)); }
+function huellaClave_(sal, clave) {
+  let h = Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(String(clave), sal)).replace(/=+$/, '');
+  for (let i = 0; i < HASH_VUELTAS; i++) h = Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(h + String(clave), sal)).replace(/=+$/, '');
+  return h;
+}
+function hashClave_(clave) { const sal = Utilities.getUuid().replace(/-/g, ''); return 'h1$' + sal + '$' + huellaClave_(sal, clave); }
+function claveCorrecta_(guardada, ingresada) {
+  if (esHashClave_(guardada)) { const x = String(guardada).split('$'); return iguales_(x[2], huellaClave_(x[1], ingresada)); }
+  return iguales_(guardada, ingresada);
+}
+function protegerClaves() { // ejecutar una vez, o se protegen solas en el primer ingreso
+  const sh = obtenerHoja_(HOJAS.usuarios), d = sh.getDataRange().getValues(), h = d[0].map(x => String(x).trim().toLowerCase()), iC = h.indexOf('clave');
+  for (let i = 1; i < d.length; i++) if (d[i][iC] !== '' && !esHashClave_(d[i][iC])) sh.getRange(i + 1, iC + 1).setValue(hashClave_(d[i][iC]));
+}
+function guardarClave_(email, valor) {
+  const lock = LockService.getScriptLock(); lock.waitLock(10000);
+  try {
+    const sh = obtenerHoja_(HOJAS.usuarios), d = sh.getDataRange().getValues(), h = d[0].map(x => String(x).trim().toLowerCase()), iE = h.indexOf('email'), iC = h.indexOf('clave');
+    for (let i = 1; i < d.length; i++) if (String(d[i][iE]).toLowerCase() === String(email).toLowerCase()) { sh.getRange(i + 1, iC + 1).setValue(valor); return; }
+  } finally { lock.releaseLock(); }
+}
+function usuarioLimpio_(u) { return { nombre: u.nombre, email: u.email, rol: u.rol, recurso_id: recursoDe_(u) }; }
+function login_(email, clave) {
+  email = String(email || '').trim().toLowerCase();
+  const cache = CacheService.getScriptCache(), k = 'intentos_' + Utilities.base64EncodeWebSafe(email).slice(0, 80);
+  const n = Number(cache.get(k) || 0);
+  if (n >= MAX_INTENTOS_LOGIN) return { ok: false, error: 'demasiados_intentos' };
+  const u = leerHoja_(HOJAS.usuarios).find(x => String(x.email).toLowerCase() === email);
+  if (!u || String(u.estado) !== 'Activo' || ROLES.indexOf(u.rol) < 0) { cache.put(k, String(n + 1), MIN_BLOQUEO_LOGIN * 60); return { ok: false, error: 'usuario_invalido' }; }
+  if (!claveCorrecta_(u.clave, clave)) { cache.put(k, String(n + 1), MIN_BLOQUEO_LOGIN * 60); return { ok: false, error: 'clave_incorrecta' }; }
+  cache.remove(k);
+  if (!esHashClave_(u.clave)) { try { guardarClave_(u.email, hashClave_(clave)); } catch (e) {} }
+  return { ok: true, token: firmarToken_(email, Date.now() + DIAS_TOKEN * 86400000), usuario: usuarioLimpio_(u) };
+}
+function firmarToken_(email, exp) { const pl = Utilities.base64EncodeWebSafe(Utilities.newBlob(email + '|' + exp).getBytes()); return pl + '.' + firma_(pl); }
+function validarToken_(token) {
+  const x = String(token || '').split('.');
+  if (x.length !== 2 || !iguales_(firma_(x[0]), x[1])) return null;
+  const t = Utilities.newBlob(Utilities.base64DecodeWebSafe(x[0])).getDataAsString(), corte = t.lastIndexOf('|');
+  const email = t.slice(0, corte), exp = Number(t.slice(corte + 1));
+  if (!exp || Date.now() > exp) return null;
+  const u = leerHoja_(HOJAS.usuarios).find(y => String(y.email).toLowerCase() === email);
+  return u && String(u.estado) === 'Activo' ? u : null; // baja = sesión cortada
+}
+function firma_(texto) {
+  const props = PropertiesService.getScriptProperties();
+  let s = props.getProperty('TOKEN_SECRET');
+  if (!s) { s = Utilities.getUuid() + Utilities.getUuid(); props.setProperty('TOKEN_SECRET', s); }
+  return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(texto, s)).replace(/=+$/, '');
+}
+
+// ── Utilidades de hoja ───────────────────────────────────────────
+function obtenerHoja_(n) { const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(n); if (!s) throw new Error('No existe la hoja ' + n); return s; }
+function leerHoja_(n) {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(n); if (!sh) return [];
+  const d = sh.getDataRange().getValues(); if (d.length <= 1) return [];
+  const tz = Session.getScriptTimeZone(), h = d.shift().map(x => String(x).trim().toLowerCase());
+  return d.filter(r => r.some(c => c !== '' && c !== null)).map(r => { const o = {}; h.forEach((k, i) => { if (k) o[k] = normalizar_(r[i], tz, k); }); return o; });
+}
+function normalizar_(v, tz, campo) {
+  if (Object.prototype.toString.call(v) === '[object Date]') {
+    if (v.getFullYear() < 1901) return Utilities.formatDate(v, tz, 'HH:mm');
+    return campo === 'creado' || campo === 'actualizado' ? v.toISOString() : Utilities.formatDate(v, tz, 'yyyy-MM-dd');
+  }
+  return v;
+}
+function asegurarColumnas_(sh, esperadas) {
+  let h = sh.getLastColumn() ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(x => String(x).trim().toLowerCase()) : [];
+  const falta = esperadas.filter(c => h.indexOf(c) < 0);
+  if (falta.length) { sh.getRange(1, h.length + 1, 1, falta.length).setValues([falta]); h = h.concat(falta); }
+  return h;
+}
+function buscarFila_(sh, id) { const n = sh.getLastRow() - 1; if (n < 1) return -1; const v = sh.getRange(2, 1, n, 1).getValues(); for (let i = 0; i < v.length; i++) if (String(v[i][0]) === String(id)) return i + 2; return -1; }
+function valorCelda_(campo, v) {
+  if (v === undefined || v === null) return '';
+  let s = String(v);
+  if (/^[=+\-@]/.test(s) && campo !== 'desde' && campo !== 'hasta') s = "'" + s; // anti fórmulas
+  if (CAMPOS_TEXTO.indexOf(campo) > -1 && s !== '' && s[0] !== "'") s = "'" + s;
+  return s;
+}
+function agregarFila_(hoja, columnas, obj) {
+  const sh = obtenerHoja_(hoja), h = asegurarColumnas_(sh, columnas);
+  sh.appendRow(h.map(k => valorCelda_(k, obj[k])));
+}
+function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }

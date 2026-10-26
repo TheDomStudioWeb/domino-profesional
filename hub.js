@@ -24,7 +24,8 @@ const ICONOS = {
   equipo: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M16 5a3 3 0 010 6M18 14c2 1 3 3 3 6"/>',
   cuit: '<path d="M4 6h16v12H4zM8 10h4M8 14h8"/>',
   iva: '<path d="M5 19L19 5M7 8a1.5 1.5 0 100-.01M17 18a1.5 1.5 0 100-.01"/>',
-  hoja: '<path d="M6 3h9l4 4v14H6zM9 12h7M9 16h7"/>'
+  hoja: '<path d="M6 3h9l4 4v14H6zM9 12h7M9 16h7"/>',
+  pdf: '<path d="M6 3h9l4 4v14H6zM12 11v6M9 14h6"/>'
 };
 const icono = (k) => `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[k]}</svg>`;
 
@@ -50,7 +51,8 @@ const GRUPOS = [
   { titulo: 'Herramientas', items: [
     { k: 'cuit', t: 'Validador de CUIT', d: 'Dígito verificador y tipo de persona.', roles: ['senior', 'midsenior', 'asistente'], go: () => irHerramienta('tool-cuit') },
     { k: 'iva', t: 'Calculadora de IVA', d: 'De neto a total y de total a neto.', roles: ['senior', 'midsenior', 'asistente'], go: () => irHerramienta('tool-iva') },
-    { k: 'hoja', t: 'Hoja unificada A4', d: 'Frente y dorso de un documento en una hoja.', roles: ['senior', 'midsenior', 'asistente'], go: () => irHerramienta('tool-hoja') }
+    { k: 'hoja', t: 'Hoja unificada A4', d: 'Frente y dorso de un documento en una hoja.', roles: ['senior', 'midsenior', 'asistente'], go: () => irHerramienta('tool-hoja') },
+    { k: 'pdf', t: 'Unificador de archivos en PDF', d: 'Fotos, PDF, Word y Excel en un solo PDF.', roles: ['senior', 'midsenior', 'asistente'], go: () => irHerramienta('tool-pdf') }
   ]}
 ];
 const ACCIONES = [];

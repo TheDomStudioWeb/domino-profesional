@@ -1,4 +1,4 @@
-const CACHE_NAME = 'domino-v7';
+const CACHE_NAME = 'domino-v8';
 const urlsToCache = [
     './',
     'index.html',
@@ -6,6 +6,7 @@ const urlsToCache = [
     'hub.css',
     'app.js',
     'hub.js',
+    'pdfunif.js',
     'manifest.json',
     'imagenes/domino-d.png',
     'imagenes/medallon-dom-192.webp'

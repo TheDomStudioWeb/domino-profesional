@@ -169,3 +169,22 @@ input,select{border-radius:2px}
 .acc-perm label{display:flex;flex-direction:row;align-items:center;gap:8px;font-size:.85rem;text-transform:none;letter-spacing:0;color:var(--text-main)}
 .acc-perm input[type=checkbox]{width:auto;margin:0}
 .acc-botones{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Unificador de archivos en PDF */
+.tool-ancha{grid-column:1 / -1}
+.pdf-btn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-align:center;margin:0;font-size:.9rem;letter-spacing:0;text-transform:none;color:inherit}
+.tool-card label.pdf-btn{margin-top:0;color:inherit;font-size:.9rem;letter-spacing:.02em;text-transform:none}
+.pdf-cab{display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px}
+.pdf-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.pdf-it{display:flex;align-items:center;gap:12px;background:var(--bg-base);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.pdf-th{flex:none;width:44px;height:56px;border-radius:4px;background:#fff center/cover no-repeat;border:1px solid var(--line)}
+.pdf-th-t{display:grid;place-items:center;background:var(--bg-panel);color:var(--gold);font-size:.62rem;font-weight:800;letter-spacing:.08em}
+.pdf-nm{flex:1;min-width:0}.pdf-nm b{display:block;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pdf-nm small{color:var(--text-muted);font-size:.78rem}
+.pdf-ac{display:flex;gap:6px}
+.pdf-ac button{width:36px;height:36px;border-radius:6px;border:1px solid var(--line);background:var(--bg-panel);color:var(--text-main);font-size:.95rem;cursor:pointer}
+.pdf-ac button:disabled{opacity:.3;cursor:default}
+.pdf-ac .pdf-del{color:var(--rojo-alerta)}
+.pdf-res{margin-top:12px;border:1px solid var(--verde-ok);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.pdf-res b{color:var(--verde-ok)}.pdf-res small{color:var(--text-muted)}
+.mal-txt{color:var(--rojo-alerta)}
+@media (max-width:520px){.pdf-it{flex-wrap:wrap}.pdf-ac{width:100%;justify-content:flex-end}}

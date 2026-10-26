@@ -486,6 +486,28 @@
                 <button type="button" class="btn-baja" id="hoja-limpiar">Limpiar imágenes</button>
             </div>
         </section>
+        <section class="tool-card tool-ancha" id="tool-pdf">
+            <h3>Unificador de archivos en PDF</h3>
+            <p class="hub-sub">Fotos, PDF, Word y Excel en un solo PDF, en el orden que elijas. Se arma en este dispositivo: no se sube nada a ningún servidor.</p>
+            <div class="seg">
+                <label class="btn-primary pdf-btn">Elegir archivos<input type="file" id="pdf-archivos" accept="image/*,application/pdf,.pdf,.docx,.doc,.xlsx,.xls,.csv" multiple hidden></label>
+                <label class="btn-secundario pdf-btn">Sacar una foto<input type="file" id="pdf-camara" accept="image/*" capture="environment" hidden></label>
+            </div>
+            <small class="hub-sub">Se pueden unir fotos, PDF, Word (.docx) y Excel (.xlsx, .xls, .csv). PowerPoint, ZIP y audio no se pueden unir: conviene exportarlos a PDF desde su programa.</small>
+            <div class="tool-out" id="pdf-aviso" aria-live="polite"></div>
+            <div id="pdf-lista-wrap" hidden>
+                <div class="pdf-cab"><b id="pdf-cuenta"></b><button type="button" class="btn-baja" id="pdf-limpiar">Vaciar lista</button></div>
+                <div class="pdf-lista" id="pdf-lista"></div>
+                <label for="pdf-nombre">Nombre del PDF</label>
+                <input type="text" id="pdf-nombre" autocomplete="off" placeholder="Ej.: Documentación Rojas">
+                <div class="seg"><button type="button" class="btn-primary" id="pdf-generar">Generar PDF</button></div>
+                <div class="tool-out" id="pdf-nota" aria-live="polite"></div>
+            </div>
+            <div class="pdf-res" id="pdf-resultado" hidden>
+                <b>✓ PDF listo</b><span id="pdf-res-nombre"></span><small id="pdf-res-info"></small>
+                <div class="seg"><button type="button" class="btn-primary" id="pdf-guardar">Guardar</button><button type="button" class="btn-secundario" id="pdf-compartir">Compartir</button></div>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -513,6 +535,7 @@
     <script src="atras.js"></script>
     <script type="module" src="app.js"></script>
     <script type="module" src="hub.js"></script>
+    <script type="module" src="pdfunif.js"></script>
     <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(function () {});
