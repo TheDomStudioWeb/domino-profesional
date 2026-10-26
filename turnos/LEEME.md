@@ -27,3 +27,10 @@ Con sesión: `login`, `agenda`, `crear_turno`, `cambiar_estado`, `reprogramar`, 
 - Para mostrar el grupo «Agenda y turnos» en el Hub: `modulos.js` → `turnos: true`.
 - Ficha del cliente: `fichas.js` usa la sesión del Hub (mismo sitio) para buscar, crear y vincular fichas en Firestore; el script suma las acciones `vincular_cliente` e `historial`. Sin sesión del Hub, el panel funciona igual y avisa «Falta ingresar al Hub».
 - Manual para Claudio: `MANUAL_Claudio_DOMino_Turnos.md`.
+
+## Widget del teléfono (turnos del día)
+1. En Apps Script, pegar el `Code.gs` nuevo y ejecutar una vez **`prepararWidget`**. En el registro de ejecución aparece la **clave del widget** (`LAUNCHER_KEY`, también queda en Propiedades del script). Hacer **Implementar → Administrar implementaciones → Nueva versión**.
+2. Lectura de solo lectura: `<URL /exec>?action=widget&key=<clave>`. Sin clave o con clave mala responde `sin_autorizacion`.
+3. Respuesta (JSON): `negocio`, `resumen {hoy, por_confirmar, atendidos_hoy}`, `proximo_turno`, `turnos_hoy[]`, `por_confirmar[]` y `novedades[]` (turnos que entraron en las últimas 48 h; cada uno con `id`, para que el launcher avise cuando aparece un id nuevo). Cada turno trae `hora, fecha, nombre, mascota, servicio, profesional, estado, origen`. **No trae teléfonos ni correos.**
+4. Sin launcher: abrir `turnos/widget.html` en el teléfono, pegar la clave una vez (queda solo en ese teléfono) y agregarla a la pantalla de inicio. Se actualiza sola cada minuto.
+5. Si la clave se filtra: borrar `LAUNCHER_KEY` en Propiedades del script y volver a ejecutar `prepararWidget`.

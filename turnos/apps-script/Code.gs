@@ -35,7 +35,46 @@ const COL_TURNOS = ['id', 'codigo', 'estado', 'fecha', 'hora', 'duracion_min', '
 const CAMPOS_TEXTO = ['fecha', 'hora', 'contacto_tel', 'codigo', 'desde', 'hasta'];
 
 // ── Entrada ───────────────────────────────────────────────────────
-function doGet() { return json_({ ok: true, servicio: 'DOMino Turnos' }); }
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  if (p.action === 'widget') {
+    // Solo lectura para el widget del teléfono. Clave larga en Propiedades del script (LAUNCHER_KEY); se crea con prepararWidget().
+    const clave = PropertiesService.getScriptProperties().getProperty('LAUNCHER_KEY');
+    if (!clave || p.key !== clave) return json_({ ok: false, error: 'sin_autorizacion' });
+    try { return json_(resumenWidget_()); } catch (err) { return json_({ ok: false, error: 'error' }); }
+  }
+  return json_({ ok: true, servicio: 'DOMino Turnos' });
+}
+
+/** Ejecutar UNA vez desde el editor: crea la clave del widget y la muestra en el registro. */
+function prepararWidget() {
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('LAUNCHER_KEY')) props.setProperty('LAUNCHER_KEY', Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, ''));
+  console.log('Clave del widget (LAUNCHER_KEY): ' + props.getProperty('LAUNCHER_KEY'));
+  console.log('Dirección: <URL de la aplicación web>?action=widget&key=<la clave de arriba>');
+}
+
+// Resumen para el widget: turnos de hoy, solicitudes por confirmar y novedades de las últimas 48 h.
+function resumenWidget_() {
+  const tz = Session.getScriptTimeZone(), ahora = new Date(), hoy = Utilities.formatDate(ahora, tz, 'yyyy-MM-dd'), horaAhora = Utilities.formatDate(ahora, tz, 'HH:mm');
+  const recs = {}; leerHoja_(HOJAS.recursos).forEach(r => { recs[String(r.id)] = r.nombre; });
+  const svs = {}; leerHoja_(HOJAS.servicios).forEach(s => { svs[String(s.id)] = s.nombre; });
+  const todos = leerHoja_(HOJAS.turnos);
+  const fila = t => ({ id: String(t.id), hora: t.hora, fecha: t.fecha, nombre: t.contacto_nombre, mascota: t.sujeto_nombre || '', servicio: svs[String(t.servicio_id)] || '', profesional: recs[String(t.recurso_id)] || '', estado: t.estado, origen: t.origen });
+  const deHoy = todos.filter(t => t.fecha === hoy && ESTADOS_ACTIVOS.indexOf(t.estado) > -1).sort((a, b) => String(a.hora).localeCompare(String(b.hora)));
+  const porConfirmar = todos.filter(t => t.estado === 'Por confirmar' && t.fecha >= hoy).sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+  const proximo = deHoy.find(t => t.estado !== 'En sala' && String(t.hora) >= horaAhora);
+  const desde = new Date(ahora.getTime() - 48 * 3600000).toISOString();
+  const novedades = todos.filter(t => t.creado && String(t.creado) >= desde && (t.estado === 'Por confirmar' || t.estado === 'Confirmado')).sort((a, b) => String(b.creado).localeCompare(String(a.creado))).slice(0, 10);
+  return {
+    ok: true, generado: ahora.toISOString(), negocio: config_().nombre,
+    resumen: { hoy: deHoy.length, por_confirmar: porConfirmar.length, atendidos_hoy: todos.filter(t => t.fecha === hoy && t.estado === 'Atendido').length },
+    proximo_turno: proximo ? fila(proximo) : null,
+    turnos_hoy: deHoy.map(fila),
+    por_confirmar: porConfirmar.slice(0, 10).map(fila),
+    novedades: novedades.map(t => Object.assign(fila(t), { creado: t.creado }))
+  };
+}
 
 function doPost(e) {
   let p;

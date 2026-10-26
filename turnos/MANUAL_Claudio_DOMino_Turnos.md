@@ -65,3 +65,8 @@ Estados del turno: Por confirmar → Confirmado → En sala («Llegó») → Ate
 - Servicio: Google Apps Script (`turnos/apps-script/Code.gs`) sobre una planilla con las hojas config, recursos, servicios, horarios, bloqueos, turnos, slots y usuarios.
 - Páginas: `turnos/reserva.html` (público) y `turnos/panel.html` (personal). La dirección del servicio está en `turnos/config.js`.
 - En el Hub de DOMino Profesional aparece el grupo «Agenda y turnos» cuando el módulo está activado en `modulos.js`.
+
+## Widget de turnos del día
+- Muestra en el teléfono: el próximo turno, cuántos turnos hay hoy, cuántas solicitudes están por confirmar, los turnos de hoy y las novedades de las últimas 48 horas (solicitudes nuevas y turnos confirmados).
+- Se ve de dos maneras: dentro del launcher (leyendo el servicio con la clave del widget) o abriendo la página `widget.html` y agregándola a la pantalla de inicio. Se actualiza sola cada minuto.
+- La clave se genera ejecutando `prepararWidget` en Apps Script. Si se filtra, se borra y se genera otra. El widget no muestra teléfonos ni correos.

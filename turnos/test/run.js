@@ -38,4 +38,14 @@ T('el profesional solo ve en el historial lo suyo y no puede vincular turnos aje
 console.log('Recordatorios');
 T('turnos de mañana con mensaje listo para WhatsApp; marcar avisado', () => { const m = nuevo(), rc = entrar(m, 'recepcion@ejemplo.test', 'ejemplo-5678').token; rsv(m); const r = m.llamar({ accion: 'recordatorios_manana', token: rc }); assert(r.ok && r.fecha === '2026-10-27' && r.turnos.length === 1 && r.turnos[0].mensaje.includes('10:00')); assert(m.llamar({ accion: 'marcar_avisado', token: rc, id: r.turnos[0].id }).ok); });
 T('correo automático: una sola vez, solo con consentimiento y correo', () => { const m = nuevo(); rsv(m); rsv(m, { hora: '11:00', email: '', tel: '2615553333' }); m.correos.length = 0; m.api.enviarRecordatorios(); assert.strictEqual(m.correos.filter(c => c.s.startsWith('Recordatorio')).length, 1); m.api.enviarRecordatorios(); assert.strictEqual(m.correos.filter(c => c.s.startsWith('Recordatorio')).length, 1); });
+T('widget: sin clave no responde; con clave muestra turnos de hoy, solicitudes y novedades', () => {
+  const m = nuevo(), get = p => JSON.parse(m.api.doGet({ parameter: p }).getContent());
+  assert.strictEqual(get({ action: 'widget' }).error, 'sin_autorizacion'); assert.strictEqual(get({ action: 'widget', key: 'x' }).error, 'sin_autorizacion');
+  m.api.prepararWidget(); const k = m.props.LAUNCHER_KEY; assert(k && k.length >= 60);
+  assert.strictEqual(get({ action: 'widget', key: 'otra' }).error, 'sin_autorizacion');
+  rsv(m, { fecha: '2026-10-26', hora: '17:00' }); rsv(m, { fecha: '2026-10-27', hora: '10:00', nombre: 'Pedro Dos', tel: '2614440000' });
+  const w = get({ action: 'widget', key: k }); assert(w.ok, JSON.stringify(w)); assert(w.resumen.por_confirmar >= 1 && w.novedades.length === 2 && Array.isArray(w.turnos_hoy));
+  assert(!JSON.stringify(w).includes('contacto_tel') && !JSON.stringify(w).includes('laura@correo'));
+  assert.strictEqual(get({}).servicio, 'DOMino Turnos');
+});
 console.log(`\n${ok} bien, ${fail} con error`); process.exit(fail ? 1 : 0);

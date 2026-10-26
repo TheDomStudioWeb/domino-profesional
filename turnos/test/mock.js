@@ -44,7 +44,7 @@ function crear(datosIniciales) {
   ctx.Date = class extends RealDate { constructor(...a) { if (a.length) super(...a); else super(ahora); } static now() { return ahora; } };
   ctx.Date.UTC = RealDate.UTC;
   vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync(__dirname + '/../apps-script/Code.gs', 'utf8') + '\n;globalThis.__api={doPost,enviarRecordatorios,protegerClaves};', ctx);
+  vm.runInContext(fs.readFileSync(__dirname + '/../apps-script/Code.gs', 'utf8') + '\n;globalThis.__api={doPost,doGet,prepararWidget,enviarRecordatorios,protegerClaves};', ctx);
   const llamar = p => JSON.parse(ctx.__api.doPost({ postData: { contents: JSON.stringify(p) } }).getContent());
   return { llamar, libros, correos, ctx, setAhora: t => { ahora = t; }, props, cache, api: ctx.__api, forzarLock: v => { lockTomado = v; } };
 }
