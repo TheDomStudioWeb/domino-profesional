@@ -119,7 +119,7 @@ async function cargarClientes(filtro = "activo") {
     listaClientes.innerHTML = "";
     const tituloCartera = document.querySelector('.client-board h2');
 const textoVacio = filtro === 'inactivo' ? 'No hay clientes inactivos registrados.' : 'No hay clientes activos registrados.';
-tituloCartera.innerText = filtro === 'inactivo' ? 'Cartera de Clientes Inactivos' : 'Cartera de Clientes Activos';
+tituloCartera.innerText = filtro === 'inactivo' ? (window.DOMINO_T ? window.DOMINO_T('cartera_inactivos', 'Cartera de Clientes Inactivos') : 'Cartera de Clientes Inactivos') : (window.DOMINO_T ? window.DOMINO_T('cartera_activos', 'Cartera de Clientes Activos') : 'Cartera de Clientes Activos');
 
     try {
         let q;

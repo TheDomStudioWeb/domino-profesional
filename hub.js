@@ -65,6 +65,16 @@ if (MODULOS.turnos) {
     { k: 'reserva', t: 'Página de reserva', d: 'La página donde sus clientes piden turno. Compártala por WhatsApp o redes.', roles: ['senior', 'midsenior', 'asistente'], go: () => window.open('turnos/reserva.html', '_blank', 'noopener') }
   ]});
 }
+// Perfil por rubro (modulos.js): oculta, renombra y ordena según lo que necesita cada rubro.
+{
+  const P = window.DOMINO_PERFIL || {}, oc = P.ocultar || [], et = P.etiquetas || {}, orden = P.orden || [];
+  GRUPOS.forEach((g) => { g.items = g.items.filter((i) => !oc.includes(i.k)); g.items.forEach((i) => { if (et[i.k]) Object.assign(i, et[i.k]); }); });
+  for (let i = GRUPOS.length - 1; i >= 0; i--) if (!GRUPOS[i].items.length) GRUPOS.splice(i, 1);
+  if (orden.length) GRUPOS.sort((a, b) => { const x = orden.indexOf(a.titulo), y = orden.indexOf(b.titulo); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
+  const gest = GRUPOS.find((g) => g.titulo === 'Gestión del estudio'); if (gest && window.DOMINO_T) gest.titulo = window.DOMINO_T('gestion', gest.titulo);
+  const nav = document.getElementById('nav-expedientes'); if (nav && window.DOMINO_T) nav.textContent = window.DOMINO_T('clientes', nav.textContent);
+  const lt = document.getElementById('lista-tareas-cliente'), pr = lt && lt.parentElement.querySelector('h2'); if (pr && window.DOMINO_T) pr.textContent = window.DOMINO_T('procesos', pr.textContent);
+}
 const ACCIONES = [];
 
 function irHerramienta(id) {
@@ -207,8 +217,8 @@ function pintarEmpresas() {
 }
 async function renderExpedientes() {
   const modo = D().modoExp === 'buzon' ? 'buzon' : 'expediente';
-  $('titulo-expedientes').innerText = modo === 'buzon' ? 'Buzón documental' : 'Expedientes';
-  $('expedientes-ayuda').innerText = modo === 'buzon' ? 'Elegí la empresa para cargar documentos recibidos o enviarle documentación.' : 'Elegí la empresa para ver sus procesos y documentos.';
+  $('titulo-expedientes').innerText = modo === 'buzon' ? (window.DOMINO_T ? window.DOMINO_T('buzon', 'Buzón documental') : 'Buzón documental') : (window.DOMINO_T ? window.DOMINO_T('expedientes', 'Expedientes') : 'Expedientes');
+  $('expedientes-ayuda').innerText = modo === 'buzon' ? 'Elegí la empresa para cargar documentos recibidos o enviarle documentación.' : (window.DOMINO_T ? window.DOMINO_T('ayuda_expediente', 'Elegí la empresa para ver sus procesos y documentos.') : 'Elegí la empresa para ver sus procesos y documentos.');
   $('lista-expedientes').innerHTML = '<p class="vacio">Cargando…</p>';
   try { await cargarEmpresas(); pintarEmpresas(); } catch (e) { console.error(e); $('lista-expedientes').innerHTML = '<p class="vacio">No se pudieron cargar las empresas.</p>'; }
   D().modoExp = 'expediente';

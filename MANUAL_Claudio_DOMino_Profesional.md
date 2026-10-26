@@ -80,3 +80,13 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 - Una misma persona puede estar en varias empresas, cada una con permisos distintos; en el portal elige la empresa arriba.
 - Si el usuario no tiene un permiso, el portal oculta esa parte y le avisa que se lo pida al estudio.
 - Los correos se guardan siempre en minúsculas.
+
+## 5. Perfil por rubro
+- Cada copia de DOMino Profesional trabaja con **un rubro** (hoy: contador y veterinaria; también existe un perfil «general» como base para rubros nuevos). El rubro se fija en el archivo `modulos.js` (línea `RUBRO`).
+- El perfil decide **qué ve el Hub**: qué grupos y herramientas aparecen, en qué orden, cómo se llaman las cosas y qué módulos opcionales trae.
+  - **Contador:** el Hub completo (clientes, tareas, buzón documental, documentos pendientes, portal del cliente, calendario de vencimientos, validador de CUIT, calculadora de IVA, etc.). Sin turnos.
+  - **Veterinaria:** arriba la agenda de turnos y la página de reserva; «Clientes» pasa a llamarse **Dueños y mascotas** (con libreta sanitaria); las tareas se llaman **Seguimientos**; no muestra el portal del cliente, los documentos pendientes ni las herramientas fiscales (CUIT, IVA).
+- Para **ver cómo queda otro rubro** sin cambiar nada, agregar `?rubro=contador` o `?rubro=veterinaria` al final de la dirección del Hub. Solo cambia la vista de ese navegador.
+- El rubro **ordena lo que se ve, no da ni quita permisos**: los permisos los siguen controlando los roles (Senior, Mid Senior, Asistente) y las reglas de seguridad.
+- Cada cliente (estudio) tiene **su propia copia y su propia base de datos**, así que un estudio nunca ve los datos de otro.
+- Para sumar un rubro nuevo se copia el perfil «general» en `modulos.js` y se define qué se oculta, cómo se renombra y qué módulos lleva.
