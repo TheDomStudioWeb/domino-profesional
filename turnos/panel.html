@@ -191,15 +191,25 @@ async function vincular(t) {
   z0.innerHTML = `<h2>Vincular con la ficha</h2>${lista.length ? `<p style="color:var(--mut);margin:0 0 8px">Fichas que se parecen:</p><div class="lista" id="sug">${lista.map(fila).join('')}</div>` : '<div class="vacio">No hay fichas parecidas.</div>'}
   <label for="bq">Buscar otra ficha (${todas.length} en el estudio)</label><input id="bq" placeholder="Nombre, teléfono o mascota" autocomplete="off"><div class="lista" id="bl" style="margin-top:8px"></div>
   <button class="btn sec" id="nueva">Crear una ficha nueva con estos datos</button><div id="vz"></div>`;
-  const enlazar = () => z0.querySelectorAll('[data-f]').forEach(b => b.onclick = () => hecho(b.dataset.f, b.dataset.n));
+  const enlazar = () => z0.querySelectorAll('[data-f]').forEach(b => b.onclick = () => elegir(b.dataset.f, b.dataset.n));
   $('#bq').oninput = () => { const q = $('#bq').value; $('#bl').innerHTML = q.trim() ? (fch.buscar(todas, q).map(fila).join('') || '<div class="vacio">Sin resultados.</div>') : ''; enlazar(); };
-  const hecho = async (id, nombre) => {
+  const REL = ['Esposo/a', 'Pareja', 'Hijo/a', 'Padre / madre', 'Hermano/a', 'Primo/a', 'Otro familiar', 'Vecino/a', 'Amigo/a', 'Otra relación'];
+  const elegir = (id, nombre) => {
+    const mismo = fch.mismaPersona(nombre, t.contacto_nombre);
+    if (mismo) return hecho(id, nombre, null);
+    z0.querySelectorAll('button').forEach(b => b.disabled = true);
+    $('#vz').innerHTML = `<div class="rec" style="margin-top:12px"><b>${E(t.contacto_nombre)}</b> no es ${E(nombre)}.<span class="msg">Responsable de la ficha: ${E(nombre)}. Aclare qué relación tiene ${E(t.contacto_nombre)} con el responsable.</span><label for="rl">Relación</label><select id="rl">${REL.map(r => `<option>${r}</option>`).join('')}</select><button class="btn" id="rg">Vincular y guardar relación</button><button class="btn sec" id="rc">Cancelar</button></div>`;
+    $('#rg').onclick = () => hecho(id, nombre, $('#rl').value);
+    $('#rc').onclick = () => { z0.querySelectorAll('button').forEach(b => b.disabled = false); $('#vz').innerHTML = ''; };
+    $('#vz').scrollIntoView({ block: 'center' });
+  };
+  const hecho = async (id, nombre, relacion) => {
     const bs = z0.querySelectorAll('button'); bs.forEach(b => b.disabled = true);
     const r = await api('vincular_cliente', { id: t.id, cliente_id: id, cliente_nombre: nombre });
     if (!r.ok) { bs.forEach(b => b.disabled = false); $('#vz').innerHTML = err(r.error); return; }
-    try { await sumarMascota(id, t.sujeto_nombre, t.sujeto_tipo); } catch (e) {}
+    try { await sumarMascota(id, t.sujeto_nombre, t.sujeto_tipo); if (relacion) await fch.sumarPersona(id, t.contacto_nombre, relacion, t.contacto_tel); } catch (e) {}
     S.ag.turnos.forEach(x => { if (String(x.id) === String(t.id) || (!x.cliente_id && limpiaTel(x.contacto_tel) === limpiaTel(t.contacto_tel))) { x.cliente_id = id; x.cliente_nombre = nombre; } });
-    pDetalle(`<div class="ok"><b>Listo.</b> ${E(nombre)} quedó vinculada${r.vinculados > 1 ? ' (también sus otros ' + (r.vinculados - 1) + ' turnos)' : ''}.</div>`);
+    pDetalle(`<div class="ok"><b>Listo.</b> ${E(nombre)} quedó vinculada${relacion ? ' · ' + E(t.contacto_nombre) + ' figura como ' + E(relacion.toLowerCase()) : ''}${r.vinculados > 1 ? ' (también sus otros ' + (r.vinculados - 1) + ' turnos)' : ''}.</div>`);
   };
   enlazar();
   $('#nueva').onclick = async () => { $('#nueva').disabled = true; $('#nueva').textContent = 'Creando…'; try { const f = await crearFicha({ nombre: t.contacto_nombre, tel: t.contacto_tel, email: t.contacto_email, sujeto_nombre: t.sujeto_nombre, sujeto_tipo: t.sujeto_tipo }); await hecho(f.id, f.nombre); } catch (e) { $('#vz').innerHTML = err('sin_permiso'); $('#nueva').disabled = false; $('#nueva').textContent = 'Crear una ficha nueva con estos datos'; } };

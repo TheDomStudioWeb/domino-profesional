@@ -56,3 +56,11 @@ export async function sumarMascota(id, sujeto_nombre, sujeto_tipo) {
   const ya = (s.data().mascotas || []).some(m => norm(m.nombre) === norm(sujeto_nombre));
   if (!ya) await fs.updateDoc(ref, { mascotas: fs.arrayUnion({ nombre: sujeto_nombre, tipo: sujeto_tipo || 'Perro' }) });
 }
+
+export const mismaPersona = (a, b) => { const x = norm(a), y = norm(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)); };
+// Otras personas que usan la ficha (familiares, vecinos...). El responsable es el nombre de la ficha.
+export async function sumarPersona(id, nombre, relacion, tel) {
+  const { fs, db } = F, ref = fs.doc(db, 'clients', id), s = await fs.getDoc(ref); if (!s.exists()) return;
+  const c = s.data(); if (mismaPersona(c.nombre_empresa, nombre) || (c.personas || []).some(p => mismaPersona(p.nombre, nombre))) return;
+  await fs.updateDoc(ref, { personas: fs.arrayUnion({ nombre: String(nombre).trim(), relacion: String(relacion || '').trim(), telefono: String(tel || '').trim() }) });
+}

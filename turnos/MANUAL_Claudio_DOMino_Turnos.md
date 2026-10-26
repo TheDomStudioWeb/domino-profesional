@@ -35,7 +35,8 @@ Estados del turno: Por confirmar → Confirmado → En sala («Llegó») → Ate
 - **«Historial del cliente»** muestra todos los turnos de esa persona: cuántos fueron, cuántos atendidos y cuántas veces no vino.
 - En la lista de clientes del Hub, cada tarjeta tiene un botón **«Turnos»** que abre ese historial (cuando el módulo de turnos está activado).
 - Para vincular hay que haber ingresado antes al Hub de DOMino Profesional con el usuario del estudio (la agenda de turnos tiene su propio ingreso, aparte). Si no, el panel avisa «Falta ingresar al Hub».
-- La ficha guarda nombre, teléfono, correo y mascotas del dueño; no guarda datos clínicos.
+- Si el turno está a nombre de **otra persona** (esposa, hijo, vecino…), antes de vincular el panel pide aclarar la **relación** con el responsable. La ficha muestra al **Responsable** (el nombre con que se creó) y, aparte, **Familiares y otros** con su relación; se pueden quitar con la ×.
+- La ficha guarda nombre, teléfono, correo, mascotas y familiares del dueño; no guarda datos clínicos.
 
 ## Avisos de mañana
 - Cada fila abre WhatsApp con el mensaje armado; una persona lo envía. Es gratis.

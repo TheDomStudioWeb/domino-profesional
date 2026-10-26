@@ -481,16 +481,21 @@ window.mostrarFichaDatos = async function (id) {
   bloque.innerHTML = ''; bloque.hidden = true;
   let c; try { const s = await getDoc(doc(D().db, 'clients', id)); if (!s.exists()) return; c = s.data(); } catch (e) { return; }
   const turnos = !!(window.DOMINO_MODULOS || {}).turnos;
-  if (!turnos && !c.telefono && !c.email_contacto && !(c.mascotas || []).length) return;
+  if (!turnos && !c.telefono && !c.email_contacto && !(c.mascotas || []).length && !(c.personas || []).length) return;
   const tel = String(c.telefono || '').replace(/\D/g, '');
+  const nombreFicha = c.nombre_empresa || '';
+  let pers = c.personas || [];
   const pintar = (m) => {
     bloque.hidden = false;
     bloque.innerHTML = `<h3>Datos del cliente</h3>
     <form class="ficha-contacto" id="ficha-contacto"><label>Teléfono<input id="fc-t" type="tel" inputmode="tel" maxlength="25" value="${esc(c.telefono || '')}" placeholder="Ej. 261 555 1234"></label><label>Correo<input id="fc-e" type="email" maxlength="80" value="${esc(c.email_contacto || '')}" placeholder="Opcional"></label><button class="btn-secundario" type="submit">Guardar datos</button>${tel.length >= 6 ? `<a class="btn-secundario" href="tel:${esc(tel)}" style="text-decoration:none;display:inline-flex;align-items:center">Llamar</a>` : ''}</form>
+    <div class="ficha-fila"><span>Responsable</span><b>${esc(nombreFicha)}</b></div>
+    ${pers.length ? `<div class="ficha-fila"><span>Familiares y otros</span><div class="ficha-chips">${pers.map((x, i) => `<span class="ficha-chip">${esc(x.nombre)}${x.relacion ? ' · ' + esc(x.relacion) : ''}<button data-p="${i}" aria-label="Quitar ${esc(x.nombre)}">×</button></span>`).join('')}</div></div>` : ''}
     ${turnos ? `<div class="ficha-fila"><span>Mascotas</span><div class="ficha-chips">${m.length ? m.map((x, i) => `<span class="ficha-chip">${esc(x.nombre)}${x.tipo ? ' · ' + esc(x.tipo) : ''}<button data-q="${i}" aria-label="Quitar ${esc(x.nombre)}">×</button></span>`).join('') : '<i>ninguna cargada</i>'}</div></div>
     <form class="ficha-alta" id="ficha-masc"><input id="fm-n" placeholder="Nombre de la mascota" maxlength="60" required><select id="fm-t"><option>Perro</option><option>Gato</option><option>Otro</option></select><button class="btn-secundario" type="submit">+ Agregar</button></form>
     <a class="btn-secundario" style="text-decoration:none;display:inline-flex;align-items:center;margin-top:8px" href="turnos/panel.html?cliente=${encodeURIComponent(id)}">Ver turnos de este cliente</a>` : ''}`;
     bloque.querySelector('#ficha-contacto').onsubmit = async (ev) => { ev.preventDefault(); const t = bloque.querySelector('#fc-t').value.trim(), e = bloque.querySelector('#fc-e').value.trim().toLowerCase(); try { await updateDoc(doc(D().db, 'clients', id), { telefono: t, email_contacto: e }); c.telefono = t; c.email_contacto = e; pintar(m); D().aviso && D().aviso('Datos guardados.', 'ok'); } catch (x) { D().aviso && D().aviso('No se pudieron guardar los datos.', 'error'); } };
+    bloque.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => { const x = pers[+b.dataset.p]; try { await updateDoc(doc(D().db, 'clients', id), { personas: arrayRemove(x) }); pers = pers.filter((_, i) => i !== +b.dataset.p); c.personas = pers; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo quitar.', 'error'); } });
     const f = bloque.querySelector('#ficha-masc');
     if (f) f.onsubmit = async (ev) => { ev.preventDefault(); const n = bloque.querySelector('#fm-n').value.trim(); if (!n) return; const nueva = { nombre: n, tipo: bloque.querySelector('#fm-t').value }; try { await updateDoc(doc(D().db, 'clients', id), { mascotas: arrayUnion(nueva) }); m = [...m, nueva]; c.mascotas = m; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo guardar la mascota.', 'error'); } };
     bloque.querySelectorAll('[data-q]').forEach(b => b.onclick = async () => { const x = m[+b.dataset.q]; try { await updateDoc(doc(D().db, 'clients', id), { mascotas: arrayRemove(x) }); m = m.filter((_, i) => i !== +b.dataset.q); c.mascotas = m; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo quitar la mascota.', 'error'); } });
