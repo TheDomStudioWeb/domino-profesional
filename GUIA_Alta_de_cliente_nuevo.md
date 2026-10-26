@@ -60,10 +60,10 @@ Con el dueño dentro del Hub:
 ## Paso 6 · Turnos (veterinaria y otros rubros con agenda) (15 min)
 1. Subir `turnos/Planilla_ejemplo_veterinaria.xlsx` a Google Drive del cliente → abrir como **Google Sheets** → renombrar `Turnos · <negocio>`.
 2. **Dejarla limpia.** Reemplazar los datos de ejemplo:
-   - `config`: `nombre`, `rubro`, `telefono` del negocio. Revisar `modo_reserva` (`solicitud` = el negocio confirma cada pedido; `directo` = se confirma solo), `paso_min`, `anticipacion_min_horas`, `cancelacion_limite_horas` y `ventana_dias`.
+   - `config`: `nombre`, `rubro`, `telefono` del negocio. Revisar `modo_reserva` (`solicitud` = el negocio confirma cada pedido; `inmediata` = se confirma sola), `paso_min`, `anticipacion_min_horas`, `cancelacion_limite_horas` y `ventana_dias`.
    - `recursos`: los profesionales o servicios reales (columna `usuario_email` = el correo con el que cada profesional ingresa).
    - `servicios`: los reales, con su duración y qué recursos los atienden.
-   - `horarios`: la atención semanal de cada recurso (`dia_semana` 1 = lunes … 7 = domingo).
+   - `horarios`: la atención semanal de cada recurso (`dia_semana`: 0 = domingo, 1 = lunes … 6 = sábado).
    - `usuarios`: **borrar todas las filas de ejemplo** y cargar las personas reales con una clave nueva larga. Las claves se protegen solas al primer ingreso.
    - `turnos`, `slots` y `bloqueos`: dejar solo la fila de encabezado.
 3. **Extensiones → Apps Script.** Borrar lo que haya y pegar `turnos/apps-script/Code.gs` completo. En *Configuración del proyecto* activar «Mostrar el archivo appsscript.json» y pegar el de `turnos/apps-script/appsscript.json`.
