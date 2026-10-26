@@ -29,6 +29,14 @@ Pantallas (barra de abajo): **Agenda** (turnos del día, por profesional; el nú
 
 Estados del turno: Por confirmar → Confirmado → En sala («Llegó») → Atendido. También: Cancelado, No vino (solo después de la hora) y Reprogramado. Un turno nunca se borra: queda en el historial.
 
+## Ficha del cliente
+- En el detalle de cada turno hay un botón **«Vincular con la ficha»**: busca en DOMino Profesional las fichas con el mismo teléfono o un nombre parecido. Se elige «Es esta persona» o «Crear una ficha nueva con estos datos».
+- Al vincular, los otros turnos del mismo teléfono que no tenían ficha quedan vinculados también, y la mascota se suma a la ficha del dueño si no estaba.
+- **«Historial del cliente»** muestra todos los turnos de esa persona: cuántos fueron, cuántos atendidos y cuántas veces no vino.
+- En la lista de clientes del Hub, cada tarjeta tiene un botón **«Turnos»** que abre ese historial (cuando el módulo de turnos está activado).
+- Para vincular hay que haber ingresado antes al Hub de DOMino Profesional con el usuario del estudio (la agenda de turnos tiene su propio ingreso, aparte). Si no, el panel avisa «Falta ingresar al Hub».
+- La ficha guarda nombre, teléfono, correo y mascotas del dueño; no guarda datos clínicos.
+
 ## Avisos de mañana
 - Cada fila abre WhatsApp con el mensaje armado; una persona lo envía. Es gratis.
 - Si el cliente dio su correo y aceptó, el sistema también le manda un recordatorio automático por correo a las 18:00 del día anterior (gratis, hasta unos 100 por día).

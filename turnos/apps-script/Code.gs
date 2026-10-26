@@ -31,7 +31,7 @@ const TRANSICIONES = {
   'Atendido': [], 'Cancelado': [], 'No vino': [], 'Reprogramado': []
 };
 const HOJAS = { config: 'config', recursos: 'recursos', servicios: 'servicios', horarios: 'horarios', bloqueos: 'bloqueos', turnos: 'turnos', slots: 'slots', usuarios: 'usuarios' };
-const COL_TURNOS = ['id', 'codigo', 'estado', 'fecha', 'hora', 'duracion_min', 'recurso_id', 'servicio_id', 'cliente_id', 'contacto_nombre', 'contacto_tel', 'contacto_email', 'sujeto_nombre', 'sujeto_tipo', 'nota', 'motivo_cancelacion', 'reprogramado_de', 'origen', 'consentimiento', 'avisado', 'creado', 'actualizado'];
+const COL_TURNOS = ['id', 'codigo', 'estado', 'fecha', 'hora', 'duracion_min', 'recurso_id', 'servicio_id', 'cliente_id', 'cliente_nombre', 'contacto_nombre', 'contacto_tel', 'contacto_email', 'sujeto_nombre', 'sujeto_tipo', 'nota', 'motivo_cancelacion', 'reprogramado_de', 'origen', 'consentimiento', 'avisado', 'creado', 'actualizado'];
 const CAMPOS_TEXTO = ['fecha', 'hora', 'contacto_tel', 'codigo', 'desde', 'hasta'];
 
 // ── Entrada ───────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ function despachar_(p) {
   if (a === 'login') return login_(p.email, p.clave);
   const u = validarToken_(p.token);
   if (!u) return { ok: false, error: 'sesion_invalida' };
-  const PRIV = { agenda: agenda_, crear_turno: crearTurno_, cambiar_estado: cambiarEstado_, reprogramar: reprogramar_, guardar_bloqueo: guardarBloqueo_, recordatorios_manana: recordatoriosManana_, marcar_avisado: marcarAvisado_ };
+  const PRIV = { agenda: agenda_, historial: historial_, vincular_cliente: vincularCliente_, crear_turno: crearTurno_, cambiar_estado: cambiarEstado_, reprogramar: reprogramar_, guardar_bloqueo: guardarBloqueo_, recordatorios_manana: recordatoriosManana_, marcar_avisado: marcarAvisado_ };
   if (!PRIV[a]) return { ok: false, error: 'accion_desconocida' };
   return PRIV[a](p, u);
 }
@@ -258,8 +258,34 @@ function agenda_(p, u) {
 }
 function crearTurno_(p, u) {
   if (u.rol === 'Profesional' && recursoDe_(u) !== String(p.recurso_id)) throw falla_('sin_permiso');
-  const t = ocuparYGuardar_({ estado: 'Confirmado', fecha: p.fecha, hora: p.hora, recurso_id: p.recurso_id, servicio_id: p.servicio_id, cliente_id: limpiar_(p.cliente_id, 40), contacto_nombre: limpiar_(p.nombre, 80), contacto_tel: String(p.tel || '').replace(/[^\d+]/g, '').slice(0, 20), contacto_email: limpiar_(p.email, 80), sujeto_nombre: limpiar_(p.sujeto_nombre, 60), sujeto_tipo: limpiar_(p.sujeto_tipo, 30), nota: limpiar_(p.nota, 300), origen: 'recepcion', consentimiento: p.consentimiento ? 'si' : '' }, { forzar: !!p.forzar && ROLES_AGENDA_TOTAL.indexOf(u.rol) > -1 });
+  const t = ocuparYGuardar_({ estado: 'Confirmado', fecha: p.fecha, hora: p.hora, recurso_id: p.recurso_id, servicio_id: p.servicio_id, cliente_id: limpiar_(p.cliente_id, 40), cliente_nombre: limpiar_(p.cliente_nombre, 80), contacto_nombre: limpiar_(p.nombre, 80), contacto_tel: String(p.tel || '').replace(/[^\d+]/g, '').slice(0, 20), contacto_email: limpiar_(p.email, 80), sujeto_nombre: limpiar_(p.sujeto_nombre, 60), sujeto_tipo: limpiar_(p.sujeto_tipo, 30), nota: limpiar_(p.nota, 300), origen: 'recepcion', consentimiento: p.consentimiento ? 'si' : '' }, { forzar: !!p.forzar && ROLES_AGENDA_TOTAL.indexOf(u.rol) > -1 });
   return { ok: true, id: t.id, codigo: t.codigo };
+}
+// Historial de un cliente (por ficha o, si no tiene, por teléfono). Solo lo que el usuario puede ver.
+function historial_(p, u) {
+  const cid = limpiar_(p.cliente_id, 40), tel = String(p.tel || '').replace(/[^\d]/g, '');
+  if (!cid && tel.length < 6) throw falla_('falta_cliente');
+  const servs = leerHoja_(HOJAS.servicios);
+  const lista = leerHoja_(HOJAS.turnos).filter(t => puedeVer_(u, t) && ((cid && String(t.cliente_id) === cid) || (!cid && String(t.contacto_tel).replace(/[^\d]/g, '') === tel)))
+    .sort((a, b) => (b.fecha + b.hora).localeCompare(a.fecha + a.hora)).slice(0, 60)
+    .map(t => ({ id: t.id, fecha: t.fecha, hora: t.hora, estado: t.estado, servicio: (servs.find(x => String(x.id) === String(t.servicio_id)) || {}).nombre, sujeto: t.sujeto_nombre, recurso_id: t.recurso_id }));
+  return { ok: true, turnos: lista };
+}
+// Vincula el turno con una ficha de DOMino Profesional; los otros turnos del mismo teléfono sin ficha quedan vinculados también.
+function vincularCliente_(p, u) {
+  const t = turnoPorId_(p.id); if (!t) throw falla_('turno_no_encontrado');
+  if (!puedeVer_(u, t)) throw falla_('sin_permiso');
+  const cid = limpiar_(p.cliente_id, 40), nom = limpiar_(p.cliente_nombre, 80); if (!cid) throw falla_('falta_cliente');
+  const lock = LockService.getScriptLock(); if (!lock.tryLock(15000)) throw falla_('sistema_ocupado');
+  try {
+    const sh = obtenerHoja_(HOJAS.turnos), h = asegurarColumnas_(sh, COL_TURNOS), iId = h.indexOf('id'), iC = h.indexOf('cliente_id'), iN = h.indexOf('cliente_nombre'), iT = h.indexOf('contacto_tel');
+    const d = sh.getDataRange().getValues(), tel = String(t.contacto_tel).replace(/[^\d]/g, ''); let n = 0;
+    for (let i = 1; i < d.length; i++) {
+      const propio = String(d[i][iId]) === String(t.id), mismoTel = tel.length >= 6 && String(d[i][iT]).replace(/[^\d]/g, '') === tel && !d[i][iC];
+      if (propio || mismoTel) { sh.getRange(i + 1, iC + 1).setValue(cid); sh.getRange(i + 1, iN + 1).setValue(nom); n++; }
+    }
+    return { ok: true, vinculados: n };
+  } finally { lock.releaseLock(); }
 }
 function turnoPorId_(id) { return leerHoja_(HOJAS.turnos).find(t => String(t.id) === String(id)); }
 function cambiarEstado_(p, u) {

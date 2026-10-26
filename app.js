@@ -154,6 +154,7 @@ const querySnapshot = await getDocs(q);
     ${cliente.estado === 'activo' ? 'Desactivar' : 'Activar'}
 </button>
                     <button class="btn-secundario" data-act="accesos" data-id="${esc(idDoc)}" data-nombre="${esc(cliente.nombre_empresa)}" title="Quiénes de esta empresa entran al portal y qué pueden hacer">Accesos</button>
+                    ${(window.DOMINO_MODULOS || {}).turnos ? `<a class="btn-secundario" style="text-decoration:none;display:inline-flex;align-items:center" href="turnos/panel.html?cliente=${encodeURIComponent(idDoc)}" title="Turnos de este cliente">Turnos</a>` : ''}
                     ${cliente.usuario_id ? `<button class="btn-secundario" data-act="acceso" data-email="${esc(cliente.usuario_id)}" title="Envía al cliente un correo para crear o restablecer su clave del portal">Enviar acceso</button>` : ''}
                 </div>
             `;

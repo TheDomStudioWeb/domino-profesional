@@ -75,7 +75,7 @@ footer{text-align:center;color:var(--mut);font-size:12.5px;padding:22px 0 0;marg
 import { llamar, msg as msgBase } from './api.js';
 const $ = s => document.querySelector(s), M = $('#m');
 const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const MSG = { sesion_invalida: 'Su sesión venció. Ingrese de nuevo.', usuario_invalido: 'Usuario o clave incorrectos.', clave_incorrecta: 'Usuario o clave incorrectos.', demasiados_intentos: 'Demasiados intentos. Espere 10 minutos.', sin_permiso: 'No tiene permiso para esa acción.', estado_invalido: 'Ese cambio de estado no está permitido.', aun_no_es_la_hora: 'Solo se puede marcar «No vino» pasada la hora del turno.', recurso_invalido: 'Ese profesional no atiende ese servicio.', horario_invalido: 'Horario inválido.' };
+const MSG = { sesion_invalida: 'Su sesión venció. Ingrese de nuevo.', usuario_invalido: 'Usuario o clave incorrectos.', clave_incorrecta: 'Usuario o clave incorrectos.', demasiados_intentos: 'Demasiados intentos. Espere 10 minutos.', sin_permiso: 'No tiene permiso para esa acción.', estado_invalido: 'Ese cambio de estado no está permitido.', aun_no_es_la_hora: 'Solo se puede marcar «No vino» pasada la hora del turno.', recurso_invalido: 'Ese profesional no atiende ese servicio.', horario_invalido: 'Horario inválido.', falta_cliente: 'Falta indicar el cliente.' };
 const msg = e => MSG[e] || msgBase(e);
 const DS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const z = n => String(n).padStart(2, '0');
@@ -103,7 +103,7 @@ function pLogin(e) {
   $('#f').onsubmit = async ev => { ev.preventDefault(); $('#go').disabled = true; $('#go').textContent = 'Ingresando…'; const r = await llamar('login', { email: $('#em').value, clave: $('#cl').value }); if (!r.ok) return pLogin(r.error); S.tok = r.token; S.user = r.usuario; guardarSes(); S.ag = null; pintar(); };
 }
 $('#salir').onclick = () => { S.tok = null; S.user = null; S.ag = null; S.tab = 'agenda'; S.det = null; S.nu = {}; S.rec = ''; S.fecha = hoyL(); guardarSes(); pintar(); };
-document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.t; S.det = null; S.nu = {}; pintar(); window.scrollTo(0, 0); });
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.t; S.det = null; S.hist = null; S.nu = {}; pintar(); window.scrollTo(0, 0); });
 
 async function cargarAgenda(forzar) {
   const f = S.fecha;
@@ -124,6 +124,7 @@ async function pintar() {
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.t === S.tab ? 'page' : 'false'));
   if (!S.ag) M.innerHTML = '<div class="cargando">Cargando agenda…</div>';
   if (!(await cargarAgenda())) return; badge();
+  if (S.alIngresar) { const id = S.alIngresar; S.alIngresar = null; let nom = ''; try { nom = (await (async () => { const c = await conectar(); return c.ok ? fch.nombreDe(id) : ''; })()) || ''; } catch (e) {} return historial({ cliente_id: id, nombre: nom || 'Historial del cliente' }); }
   if (S.det) return pDetalle();
   ({ agenda: pAgenda, nuevo: pNuevo, aviso: pAviso, mas: pMas }[S.tab] || pAgenda)();
 }
@@ -157,16 +158,51 @@ function pDetalle(aviso) {
   const sg = SIG[t.estado] || [], act = ACTIVOS.includes(t.estado), negocio = S.ag.config.nombre;
   const hola = `Hola ${t.contacto_nombre}, le escribimos de ${negocio} por su turno del ${corta(t.fecha)} a las ${t.hora}.`;
   M.innerHTML = `<button class="volver" id="v">‹ Volver a la agenda</button><h2>${E(t.contacto_nombre)}</h2>${aviso || ''}
-  <div class="res"><div><span>Estado</span><b>${E(t.estado)}</b></div><div><span>Día y hora</span><b>${E(corta(t.fecha))} · ${E(t.hora)}–${E(addMin(t.hora, +t.duracion_min))}</b></div><div><span>Servicio</span><b>${E(t.servicio || svDe(t.servicio_id).nombre)}</b></div><div><span>Con</span><b>${E(recDe(t.recurso_id).nombre)}</b></div>${t.sujeto_nombre ? `<div><span>${E(t.sujeto_tipo || 'Mascota')}</span><b>${E(t.sujeto_nombre)}</b></div>` : ''}<div><span>Teléfono</span><b>${E(t.contacto_tel)}</b></div>${t.contacto_email ? `<div><span>Correo</span><b>${E(t.contacto_email)}</b></div>` : ''}${t.nota ? `<div><span>Comentario</span><b>${E(t.nota)}</b></div>` : ''}${t.motivo_cancelacion ? `<div><span>Motivo</span><b>${E(t.motivo_cancelacion)}</b></div>` : ''}<div><span>Origen</span><b>${t.origen === 'web' ? 'Reserva por la web' : 'Cargado en recepción'}</b></div></div>
+  <div class="res"><div><span>Estado</span><b>${E(t.estado)}</b></div><div><span>Día y hora</span><b>${E(corta(t.fecha))} · ${E(t.hora)}–${E(addMin(t.hora, +t.duracion_min))}</b></div><div><span>Servicio</span><b>${E(t.servicio || svDe(t.servicio_id).nombre)}</b></div><div><span>Con</span><b>${E(recDe(t.recurso_id).nombre)}</b></div>${t.sujeto_nombre ? `<div><span>${E(t.sujeto_tipo || 'Mascota')}</span><b>${E(t.sujeto_nombre)}</b></div>` : ''}<div><span>Teléfono</span><b>${E(t.contacto_tel)}</b></div>${t.contacto_email ? `<div><span>Correo</span><b>${E(t.contacto_email)}</b></div>` : ''}${t.nota ? `<div><span>Comentario</span><b>${E(t.nota)}</b></div>` : ''}${t.motivo_cancelacion ? `<div><span>Motivo</span><b>${E(t.motivo_cancelacion)}</b></div>` : ''}<div><span>Origen</span><b>${t.origen === 'web' ? 'Reserva por la web' : 'Cargado en recepción'}</b></div><div><span>Ficha</span><b>${t.cliente_id ? E(t.cliente_nombre || 'Vinculada') : '<span style="color:var(--warn)">Sin vincular</span>'}</b></div></div>
   <div class="acc">${sg.map(([e, tx]) => `<button class="btn" data-e="${E(e)}">${E(tx)}</button>`).join('')}
   <a class="btn sec" style="text-align:center;text-decoration:none;display:grid;place-items:center" href="${E(waLink(t.contacto_tel, hola))}" target="_blank" rel="noopener">Escribir por WhatsApp</a>
   <a class="btn sec" style="text-align:center;text-decoration:none;display:grid;place-items:center" href="tel:${E(limpiaTel(t.contacto_tel))}">Llamar</a>
+  <button class="btn sec" id="hist">Historial del cliente</button>${t.cliente_id ? '' : '<button class="btn" id="vinc">Vincular con la ficha</button>'}
   ${act ? '<button class="btn sec" id="rep">Reprogramar</button><button class="btn peligro" id="can">Cancelar turno</button>' : ''}</div><div id="zona"></div>`;
   $('#v').onclick = () => { S.det = null; pintar(); };
   M.querySelectorAll('[data-e]').forEach(b => b.onclick = async () => { if (S.busy) return; S.busy = true; M.querySelectorAll('button').forEach(x => x.disabled = true); b.textContent = 'Guardando…'; const r = await api('cambiar_estado', { id: t.id, estado: b.dataset.e }); S.busy = false; if (!r.ok) return pDetalle(err(r.error)); t.estado = b.dataset.e; badge(); pDetalle('<div class="ok"><b>Listo.</b> El turno quedó «' + E(t.estado) + '».</div>'); });
   const can = $('#can'); if (can) can.onclick = () => { $('#zona').innerHTML = `<div class="err"><b>¿Cancelar el turno?</b> Se libera el horario.</div><label for="mo">Motivo (opcional)</label><input id="mo" maxlength="150"><button class="btn peligro" id="si">Sí, cancelar</button><button class="btn sec" id="no">No, mantenerlo</button>`; $('#no').onclick = () => pDetalle(); $('#si').onclick = async () => { $('#si').disabled = true; $('#si').textContent = 'Cancelando…'; const r = await api('cambiar_estado', { id: t.id, estado: 'Cancelado', motivo: $('#mo').value }); if (!r.ok) return pDetalle(err(r.error)); t.estado = 'Cancelado'; t.motivo_cancelacion = $('#mo') ? $('#mo').value : ''; badge(); pDetalle('<div class="ok"><b>Turno cancelado.</b> El horario quedó libre.</div>'); }; $('#si').scrollIntoView({ block: 'center' }); };
   const rep = $('#rep'); if (rep) rep.onclick = () => repro(t);
+  $('#hist').onclick = () => historial({ cliente_id: t.cliente_id, tel: t.contacto_tel, nombre: t.contacto_nombre });
+  const vi = $('#vinc'); if (vi) vi.onclick = () => vincular(t);
 }
+// ── Ficha del cliente ──
+async function historial(q) {
+  M.innerHTML = `<button class="volver" id="v">‹ Volver</button><h2>${E(q.nombre || 'Historial')}</h2><div class="cargando">Buscando…</div>`; $('#v').onclick = () => { S.hist = null; pintar(); };
+  S.hist = q; const r = await api('historial', { cliente_id: q.cliente_id, tel: q.tel }); if (!$('#v')) return;
+  if (!r.ok) { M.innerHTML = `<button class="volver" id="v">‹ Volver</button>` + err(r.error); $('#v').onclick = () => { S.hist = null; pintar(); }; return; }
+  const lst = r.turnos, atend = lst.filter(t => t.estado === 'Atendido').length, nv = lst.filter(t => t.estado === 'No vino').length;
+  M.innerHTML = `<button class="volver" id="v">‹ Volver</button><h2>${E(q.nombre || 'Historial')}</h2>
+  <div class="res"><div><span>Turnos registrados</span><b>${lst.length}</b></div><div><span>Atendidos</span><b>${atend}</b></div><div><span>No vino</span><b>${nv}</b></div></div>
+  <div class="lista">${lst.length ? lst.map(t => `<div class="rec"><div class="t"><b>${E(corta(t.fecha))} · ${E(t.hora)}</b><span class="pill ${CLS[t.estado] || ''}">${E(t.estado)}</span></div><span class="msg">${E(t.servicio || '')}${t.sujeto ? ' · ' + E(t.sujeto) : ''} · ${E(recDe(t.recurso_id).nombre || '')}</span></div>`).join('') : '<div class="vacio">Sin turnos registrados.</div>'}</div>`;
+  $('#v').onclick = () => { S.hist = null; pintar(); };
+}
+async function vincular(t) {
+  const z0 = $('#zona'); z0.innerHTML = '<div class="cargando">Buscando fichas…</div>'; z0.scrollIntoView({ block: 'start' });
+  const c = await conectar();
+  if (!c.ok) { z0.innerHTML = `<div class="err"><b>Falta ingresar al Hub.</b> Para vincular fichas, entre primero a DOMino Profesional con su usuario del estudio y vuelva a esta pantalla.</div><a class="btn sec" style="text-align:center;text-decoration:none;display:grid;place-items:center" href="../index.html">Ir al Hub</a>`; return; }
+  let lista = []; try { lista = await sugeridas(t.contacto_nombre, t.contacto_tel); } catch (e) { z0.innerHTML = err('error_interno'); return; }
+  z0.innerHTML = `<h2>Vincular con la ficha</h2>${lista.length ? `<p style="color:var(--mut);margin:0 0 8px">Fichas que se parecen:</p><div class="lista">${lista.map(f => `<div class="rec"><div class="t"><b>${E(f.nombre)}</b>${f.exacto ? '<span class="pill es">Mismo teléfono</span>' : ''}</div><span class="msg">${E(f.telefono || 'Sin teléfono')}${f.mascotas ? ' · ' + E(f.mascotas) : ''}</span><button class="btn" data-f="${E(f.id)}" data-n="${E(f.nombre)}">Es esta persona</button></div>`).join('')}</div>` : '<div class="vacio">No hay fichas parecidas.</div>'}
+  <button class="btn sec" id="nueva">Crear una ficha nueva con estos datos</button><div id="vz"></div>`;
+  const hecho = async (id, nombre) => {
+    const bs = z0.querySelectorAll('button'); bs.forEach(b => b.disabled = true);
+    const r = await api('vincular_cliente', { id: t.id, cliente_id: id, cliente_nombre: nombre });
+    if (!r.ok) { bs.forEach(b => b.disabled = false); $('#vz').innerHTML = err(r.error); return; }
+    try { await sumarMascota(id, t.sujeto_nombre, t.sujeto_tipo); } catch (e) {}
+    S.ag.turnos.forEach(x => { if (String(x.id) === String(t.id) || (!x.cliente_id && limpiaTel(x.contacto_tel) === limpiaTel(t.contacto_tel))) { x.cliente_id = id; x.cliente_nombre = nombre; } });
+    pDetalle(`<div class="ok"><b>Listo.</b> ${E(nombre)} quedó vinculada${r.vinculados > 1 ? ' (también sus otros ' + (r.vinculados - 1) + ' turnos)' : ''}.</div>`);
+  };
+  z0.querySelectorAll('[data-f]').forEach(b => b.onclick = () => hecho(b.dataset.f, b.dataset.n));
+  $('#nueva').onclick = async () => { $('#nueva').disabled = true; $('#nueva').textContent = 'Creando…'; try { const f = await crearFicha({ nombre: t.contacto_nombre, tel: t.contacto_tel, email: t.contacto_email, sujeto_nombre: t.sujeto_nombre, sujeto_tipo: t.sujeto_tipo }); await hecho(f.id, f.nombre); } catch (e) { $('#vz').innerHTML = err('sin_permiso'); $('#nueva').disabled = false; $('#nueva').textContent = 'Crear una ficha nueva con estos datos'; } };
+}
+let fch = null; const conectar = async () => { fch = fch || await import('./fichas.js'); return fch.conectar(); };
+const sugeridas = (...a) => fch.sugeridas(...a), crearFicha = (...a) => fch.crearFicha(...a), sumarMascota = (...a) => fch.sumarMascota(...a);
+
 async function repro(t) {
   const z0 = $('#zona'); let fecha = t.fecha >= hoyL() ? t.fecha : hoyL(), hora = null, tk = 0, tm = null;
   z0.innerHTML = `<h2>Nuevo horario</h2><label for="rf">Día</label><input id="rf" type="date" value="${fecha}" min="${hoyL()}"><div id="hs" class="cargando">Buscando horarios…</div><div id="ac"></div>`;
@@ -253,11 +289,12 @@ function pMas(res) {
 // Botón del encabezado: vuelve un paso atrás hasta la agenda; en la agenda lleva al Hub (Inicio).
 function volverCtx() {
   const b = $('#vhub'); if (!b) return;
-  const enRaiz = !S.tok || (S.tab === 'agenda' && !S.det);
+  const enRaiz = !S.tok || (S.tab === 'agenda' && !S.det && !S.hist);
   b.textContent = enRaiz ? '‹ Inicio' : '‹ Volver';
   b.setAttribute('aria-label', enRaiz ? 'Ir al inicio de DOMino Profesional' : 'Volver a la agenda');
 }
 $('#vhub').onclick = () => {
+  if (S.hist) { S.hist = null; return pintar(); }
   if (S.det) { S.det = null; return pintar(); }
   if (S.tab === 'nuevo' && (S.nu.sv || S.nu.listo)) { const era = !!S.nu.listo; S.nu = {}; if (era) S.tab = 'agenda'; return pintar(); }
   if (S.tab !== 'agenda') { S.tab = 'agenda'; return pintar(); }
@@ -265,6 +302,10 @@ $('#vhub').onclick = () => {
 };
 new MutationObserver(volverCtx).observe(M, { childList: true });
 volverCtx();
+
+// Entrada desde la ficha del Hub: turnos.html?cliente=ID abre el historial de ese cliente.
+const qCli = new URLSearchParams(location.search).get('cliente');
+if (qCli) { S.alIngresar = qCli; }
 
 // Actualiza sola la agenda: al volver a la pestaña y cada minuto (solo si está mirando la agenda y no está escribiendo).
 let ultimo = Date.now();

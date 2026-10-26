@@ -25,4 +25,5 @@ Con sesión: `login`, `agenda`, `crear_turno`, `cambiar_estado`, `reprogramar`, 
 - **No probado** en Google real: la concurrencia verdadera del cerrojo (LockService), las cuotas de correo y la velocidad con muchos turnos. Es lo primero que hay que verificar al desplegar.
 - Pantallas: `reserva.html` (cliente), `panel.html` (personal: agenda, nuevo turno, avisos de mañana, bloqueos) y `prueba.html` (diagnóstico). Probadas en simulación; falta probarlas con el servicio real desde el celular.
 - Para mostrar el grupo «Agenda y turnos» en el Hub: `modulos.js` → `turnos: true`.
+- Ficha del cliente: `fichas.js` usa la sesión del Hub (mismo sitio) para buscar, crear y vincular fichas en Firestore; el script suma las acciones `vincular_cliente` e `historial`. Sin sesión del Hub, el panel funciona igual y avisa «Falta ingresar al Hub».
 - Manual para Claudio: `MANUAL_Claudio_DOMino_Turnos.md`.
