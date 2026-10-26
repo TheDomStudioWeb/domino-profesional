@@ -28,6 +28,8 @@ function reemplazar(f, re, nuevo, obligatorio = true) {
 F.forEach(k => reemplazar('turnos/fichas.js', new RegExp('(' + k + ':\\s*")[^"]*(")'), '$1' + d.firebase[k] + '$2'));
 // 2. Rubro
 reemplazar('modulos.js', /const RUBRO = '[a-z]+';/, "const RUBRO = '" + d.rubro + "';");
+// 2b. Gestión de documentos: solo se enciende si Storage está activo y probado en el proyecto del cliente
+reemplazar('modulos.js', /const DOCUMENTOS = (true|false);/, 'const DOCUMENTOS = ' + (d.documentos === true ? 'true' : 'false') + ';');
 // 3. Servicio de turnos
 if (d.turnos_url) reemplazar('turnos/config.js', /window\.TURNOS_API = '[^']*';/, "window.TURNOS_API = '" + d.turnos_url + "';");
 // 4. Nombre en la aplicación instalable

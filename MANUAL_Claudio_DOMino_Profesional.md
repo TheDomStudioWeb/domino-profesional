@@ -90,3 +90,9 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 - El rubro **ordena lo que se ve, no da ni quita permisos**: los permisos los siguen controlando los roles (Senior, Mid Senior, Asistente) y las reglas de seguridad.
 - Cada cliente (estudio) tiene **su propia copia y su propia base de datos**, así que un estudio nunca ve los datos de otro.
 - Para sumar un rubro nuevo se copia el perfil «general» en `modulos.js` y se define qué se oculta, cómo se renombra y qué módulos lleva.
+
+## 6. Funciones «Próximamente»
+- La **gestión de documentos** (guardar y enviar archivos: Buzón documental, documentos pendientes, portal del cliente, adjuntar certificados) todavía **no está disponible** en esta versión, porque necesita el almacenamiento en la nube (Firebase Storage).
+- Mientras no esté habilitada, el Hub la muestra con la etiqueta **«Próximamente»**, avisa si se la toca y **no deja cargar archivos**. Así nadie piensa que un documento quedó guardado cuando no es así.
+- Siguen funcionando las herramientas que no guardan archivos: la hoja unificada A4 y el unificador de archivos en PDF (el resultado se descarga al teléfono o a la computadora).
+- Se habilita cambiando `DOCUMENTOS` a `true` en `modulos.js`, cuando el almacenamiento esté activo y probado.

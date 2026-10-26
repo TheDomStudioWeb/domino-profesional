@@ -4,6 +4,9 @@
 // OJO: el rubro ordena lo que se ve; NO da ni quita permisos (eso lo controlan los roles y las reglas de Firestore).
 (function () {
   const RUBRO = 'veterinaria';
+  // Gestión de documentos (guardar y enviar archivos). Necesita Firebase Storage activo en el proyecto del cliente.
+  // Mientras esté en false, el Hub muestra «Próximamente» y no deja cargar documentos. Pasar a true cuando Storage esté listo y probado.
+  const DOCUMENTOS = false;
 
   const PERFILES = {
     // Todo lo que tiene DOMino Profesional, sin módulos opcionales. Sirve de base para rubros nuevos.
@@ -41,5 +44,6 @@
   window.DOMINO_RUBRO = elegido;
   window.DOMINO_PERFIL = P;
   window.DOMINO_MODULOS = Object.assign({ turnos: false }, P.modulos);
+  window.DOMINO_FUNC = { documentos: DOCUMENTOS };
   window.DOMINO_T = (k, porDefecto) => (P.textos && P.textos[k]) || porDefecto;
 })();

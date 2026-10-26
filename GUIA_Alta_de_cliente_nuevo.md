@@ -42,6 +42,7 @@ Anotar antes de empezar:
    - `nombre`, `rubro`
    - los seis valores de `firebase` copiados en el paso 1
    - `turnos_url`: dejar vacío por ahora (se completa en el paso 6)
+   - `documentos`: dejar en `false`. Mientras esté en `false`, el Hub muestra **«Próximamente»** en todo lo que guarda o envía archivos y no deja cargar nada (así nadie cree que un documento quedó guardado). Pasarlo a `true` **solo** cuando Storage esté activo, con sus reglas publicadas y probado subiendo y bajando un archivo
 3. Ejecutar: `node alta/preparar-cliente.js alta/cliente.json`
    - Cambia Firebase en las cinco pantallas, el rubro, el nombre de la aplicación instalable y la dirección de turnos.
    - Termina con un **control final**: si dice «no quedan datos del proyecto de referencia», está bien. Si avisa «ATENCIÓN», no publicar hasta resolverlo.

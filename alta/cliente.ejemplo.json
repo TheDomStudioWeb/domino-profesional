@@ -9,5 +9,6 @@
     "messagingSenderId": "PEGAR",
     "appId": "PEGAR"
   },
-  "turnos_url": ""
+  "turnos_url": "",
+  "documentos": false
 }

@@ -71,6 +71,7 @@ if (MODULOS.turnos) {
   GRUPOS.forEach((g) => { g.items = g.items.filter((i) => !oc.includes(i.k)); g.items.forEach((i) => { if (et[i.k]) Object.assign(i, et[i.k]); }); });
   for (let i = GRUPOS.length - 1; i >= 0; i--) if (!GRUPOS[i].items.length) GRUPOS.splice(i, 1);
   if (orden.length) GRUPOS.sort((a, b) => { const x = orden.indexOf(a.titulo), y = orden.indexOf(b.titulo); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y); });
+  if ((window.DOMINO_FUNC || {}).documentos === false) GRUPOS.forEach((g) => g.items.forEach((i) => { if (['buzon', 'pendientes', 'portal'].includes(i.k)) { i.prox = true; i.go = () => window.DOMINO_PROXIMO && window.DOMINO_PROXIMO(i.t); } }));
   const gest = GRUPOS.find((g) => g.titulo === 'Gestión del estudio'); if (gest && window.DOMINO_T) gest.titulo = window.DOMINO_T('gestion', gest.titulo);
   const nav = document.getElementById('nav-expedientes'); if (nav && window.DOMINO_T) nav.textContent = window.DOMINO_T('clientes', nav.textContent);
   const lt = document.getElementById('lista-tareas-cliente'), pr = lt && lt.parentElement.querySelector('h2'); if (pr && window.DOMINO_T) pr.textContent = window.DOMINO_T('procesos', pr.textContent);
@@ -137,7 +138,7 @@ function renderResumen(r) {
     { n: r.proceso, t: 'En proceso', cls: 'text-ambar', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` }
   ];
   items.push({ n: r.listos, t: rol === 'asistente' ? 'Finalizadas' : 'Balances listos', cls: 'text-verde', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` });
-  if (rol !== 'asistente') items.push({ n: (D().kpis || {}).docsPendientes ?? '–', t: 'Documentos por procesar', cls: 'text-ambar', go: 'abrirModalDocsPendientes()' });
+  if (rol !== 'asistente' && (window.DOMINO_FUNC || {}).documentos !== false) items.push({ n: (D().kpis || {}).docsPendientes ?? '–', t: 'Documentos por procesar', cls: 'text-ambar', go: 'abrirModalDocsPendientes()' });
   $('hub-resumen').innerHTML = items.map((i) => `<button type="button" class="res-card" onclick="${i.go}"><span class="numero ${i.cls}">${esc(i.n)}</span><span class="res-t">${esc(i.t)}</span></button>`).join('');
 }
 
@@ -163,7 +164,7 @@ function renderGrupos() {
     const items = g.items.filter((i) => i.roles.includes(rol));
     if (!items.length) return '';
     return `<section class="hub-grupo" id="hub-g-${gi}"><h2>${esc(g.titulo)}</h2><div class="tiles">${items.map((i, ii) => `
-      <button type="button" class="tile" data-g="${gi}" data-i="${g.items.indexOf(i)}">
+      <button type="button" class="tile"${i.prox ? ' data-prox="1"' : ''} data-g="${gi}" data-i="${g.items.indexOf(i)}">${i.prox ? '<span class="tile-prox">Próximamente</span>' : ''}
         <span class="tile-ic">${icono(i.k)}</span>
         <span class="tile-tx"><b>${esc(i.t)}</b><small>${esc(i.d)}</small></span>
         <span class="tile-badge" data-badge="${i.badge || ''}" hidden></span>
@@ -508,7 +509,7 @@ window.mostrarFichaDatos = async function (id) {
     ${st.vencidas.length ? `<div class="lib-alerta">Vencido: ${st.vencidas.map((e) => esc(e.tipo) + ' (' + dmy(e.proxima) + ')').join(', ')}</div>` : ''}${st.prox ? `<div class="lib-ok">Próximo vencimiento: ${dmy(st.prox)} · en ${dias(st.prox)} ${dias(st.prox) === 1 ? 'día' : 'días'}</div>` : ''}
     <div class="lib-lista">${ls.length ? ls.map((e) => `<div class="lib-fila"><b>${dmy(e.fecha)}</b><span>${esc(e.tipo)}${e.detalle ? ' — ' + esc(e.detalle) : ''}${e.proxima ? `<small>Próxima: ${dmy(e.proxima)}</small>` : ''}</span><button data-le="${esc(e.id)}" aria-label="Quitar registro">×</button></div>`).join('') : '<i>Sin registros todavía.</i>'}</div>
     <form class="libreta-alta" id="lib-form"><label>Qué<select id="lb-t">${TIPOS.map((t) => `<option>${t}</option>`).join('')}</select></label><label>Fecha<input id="lb-f" type="date" value="${hoyISO()}" required></label><label class="lb-det">Detalle (producto, peso, nota)<input id="lb-d" maxlength="120" placeholder="Ej. Sextuple, lote 123 / 12,4 kg"></label><label>Próxima<input id="lb-p" type="date"></label><button class="btn-secundario" type="submit">Guardar registro</button></form>
-    <button type="button" class="btn-secundario" id="lib-doc">Adjuntar certificado o foto (Buzón documental)</button></div>`;
+    ${(window.DOMINO_FUNC || {}).documentos === false ? '<button type="button" class="btn-secundario" id="lib-doc" disabled>Adjuntar certificado o foto <small class="prox-pill">Próximamente</small></button>' : '<button type="button" class="btn-secundario" id="lib-doc">Adjuntar certificado o foto (Buzón documental)</button>'}</div>`;
   };
   const pintar = (m) => {
     bloque.hidden = false;
