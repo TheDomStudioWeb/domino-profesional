@@ -30,6 +30,14 @@ F.forEach(k => reemplazar('turnos/fichas.js', new RegExp('(' + k + ':\\s*")[^"]*
 reemplazar('modulos.js', /const RUBRO = '[a-z]+';/, "const RUBRO = '" + d.rubro + "';");
 // 2b. Gestión de documentos: solo se enciende si Storage está activo y probado en el proyecto del cliente
 reemplazar('modulos.js', /const DOCUMENTOS = (true|false);/, 'const DOCUMENTOS = ' + (d.documentos === true ? 'true' : 'false') + ';');
+// 2c. Marca del negocio: nombre y logo (el logo es un archivo PNG/WebP/SVG; se copia como imagenes/logo-cliente.png)
+reemplazar('modulos.js', /const CLIENTE = \{ nombre: '[^']*'/, "const CLIENTE = { nombre: '" + d.nombre.replace(/['\\]/g, '') + "'");
+if (d.logo) {
+  const origen = path.resolve(path.dirname(path.resolve(arch)), d.logo);
+  if (!fs.existsSync(origen)) { console.error('No se encontró el logo: ' + origen); process.exit(1); }
+  if (!/\.png$/i.test(origen)) { console.error('El logo tiene que ser PNG (se guarda como imagenes/logo-cliente.png).'); process.exit(1); }
+  fs.copyFileSync(origen, path.join(raiz, 'imagenes', 'logo-cliente.png')); cambios++;
+} else console.log('Sin "logo": el Hub mostrará la marca DOMino hasta que se agregue imagenes/logo-cliente.png.');
 // 3. Servicio de turnos
 if (d.turnos_url) reemplazar('turnos/config.js', /window\.TURNOS_API = '[^']*';/, "window.TURNOS_API = '" + d.turnos_url + "';");
 // 4. Nombre en la aplicación instalable

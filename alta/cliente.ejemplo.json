@@ -1,6 +1,7 @@
 {
   "nombre": "Veterinaria Ejemplo",
   "rubro": "veterinaria",
+  "logo": "logo.png",
   "firebase": {
     "apiKey": "PEGAR",
     "authDomain": "PEGAR",

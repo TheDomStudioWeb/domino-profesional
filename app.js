@@ -146,7 +146,7 @@ const querySnapshot = await getDocs(q);
                 <div class="client-card" id="card-${idDoc}">
                     <div data-act="expediente" data-id="${esc(idDoc)}" data-nombre="${esc(cliente.nombre_empresa)}" role="button" tabindex="0" style="cursor: pointer; flex-grow: 1;">
                         <h4 style="pointer-events: none;">${esc(cliente.nombre_empresa)}</h4>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">CUIT: ${esc(cliente.cuit)}</p>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">${window.DOMINO_T ? window.DOMINO_T('id_label', 'CUIT') : 'CUIT'}: ${esc(cliente.cuit)}</p>
                         ${(window.DOMINO_MODULOS || {}).turnos && (cliente.mascotas || []).length ? `<p style="color: var(--text-muted); font-size: 0.85rem; pointer-events: none;">Mascotas: ${esc(cliente.mascotas.map((m) => m.nombre).join(', '))}</p>` : ''}
                     </div>
                     <button class="${cliente.estado === 'activo' ? 'btn-baja' : 'btn-activar'}" 
@@ -626,7 +626,8 @@ async function cargarCacheClientes() {
     });
 }
 
-const ETIQUETA_ROL = { senior: 'Profesional Senior', midsenior: 'Profesional Mid Senior', asistente: 'Asistente' };
+const _T = (k, d) => (window.DOMINO_T ? window.DOMINO_T(k, d) : d);
+const ETIQUETA_ROL = { senior: _T('rol_senior', 'Profesional Senior'), midsenior: _T('rol_midsenior', 'Profesional Mid Senior'), asistente: _T('rol_asistente', 'Asistente') };
 
 function aplicarPermisosPorRol(rol) {
     // El menú muestra solo lo que corresponde al nivel de cada persona

@@ -15,6 +15,7 @@ Anotar antes de empezar:
 - Nombre del negocio (ej. «Veterinaria Pepe») y rubro (`veterinaria`, `contador` o `general`).
 - Correo del dueño (será el usuario **Senior**).
 - Teléfono y correo de contacto del negocio.
+- **Logo del negocio en PNG** (idealmente con fondo transparente). Se muestra en el Hub y en el portal en lugar del de DOMino. En `alta/cliente.json` se indica en el campo `logo` (ruta al archivo). Sin logo, el Hub muestra la marca DOMino.
 - Profesionales (nombre, correo si tienen usuario), servicios con su duración y horarios de atención. Esto se carga en el paso 6.
 
 ## Paso 1 · Crear el proyecto de Firebase (10 min)

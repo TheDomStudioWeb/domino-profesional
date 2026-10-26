@@ -90,7 +90,8 @@ window.abrirExpedientes = function (modo) {
 // ---------------------------------------------------------------
 // INICIO
 // ---------------------------------------------------------------
-const ROL_TXT = { senior: 'Profesional Senior', midsenior: 'Profesional Mid Senior', asistente: 'Asistente' };
+const T = (k, d) => (window.DOMINO_T ? window.DOMINO_T(k, d) : d);
+const ROL_TXT = { senior: T('rol_senior', 'Profesional Senior'), midsenior: T('rol_midsenior', 'Profesional Mid Senior'), asistente: T('rol_asistente', 'Asistente') };
 
 function badgeChat() { const b = $('badge-chat'); return b && b.style.display !== 'none' ? b.innerText : ''; }
 
@@ -110,7 +111,7 @@ async function renderHub() {
   // Si el nombre cargado es un título genérico (Contador 1, Asistente 2…), se saluda sin número ni cargo
   const generico = /^(contador|contadora|asistente|profesional|usuario|admin|administrador)\b/i.test(String(nombre || '').trim());
   $('hub-saludo').innerText = nombre && !generico ? `Hola, ${nombre}` : 'Hola, profesional';
-  $('hub-sub').innerText = `${ROL_TXT[rol] || ''} · Todo el estudio en un solo lugar: elegí una herramienta y entrás en un toque.`;
+  $('hub-sub').innerText = `${ROL_TXT[rol] || ''} · ${T('hub_sub', 'Todo el estudio en un solo lugar: elegí una herramienta y entrás en un toque.')}`;
   renderGrupos();
   try {
     let tareas = await tareasAbiertas();
@@ -137,7 +138,7 @@ function renderResumen(r) {
     { n: r.hoy, t: 'Vencen hoy', cls: 'text-ambar', go: "navegarA('calendario')" },
     { n: r.proceso, t: 'En proceso', cls: 'text-ambar', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` }
   ];
-  items.push({ n: r.listos, t: rol === 'asistente' ? 'Finalizadas' : 'Balances listos', cls: 'text-verde', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` });
+  items.push({ n: r.listos, t: rol === 'asistente' ? T('kpi_finalizadas', 'Finalizadas') : T('kpi_listos', 'Balances listos'), cls: 'text-verde', go: `navegarA('${rol === 'asistente' ? 'mis-tareas' : 'kanban'}')` });
   if (rol !== 'asistente' && (window.DOMINO_FUNC || {}).documentos !== false) items.push({ n: (D().kpis || {}).docsPendientes ?? '–', t: 'Documentos por procesar', cls: 'text-ambar', go: 'abrirModalDocsPendientes()' });
   $('hub-resumen').innerHTML = items.map((i) => `<button type="button" class="res-card" onclick="${i.go}"><span class="numero ${i.cls}">${esc(i.n)}</span><span class="res-t">${esc(i.t)}</span></button>`).join('');
 }
@@ -150,11 +151,11 @@ function renderHoy(lista, hoy) {
     const vencida = t.vencimiento < hoy;
     const eti = vencida ? 'Vencida' : t.vencimiento === hoy ? 'Hoy' : 'Próxima';
     const color = vencida ? 'border-rojo' : t.vencimiento === hoy ? 'border-ambar' : 'border-verde';
-    const empresa = cache[t.cliente_id] || 'Empresa';
+    const empresa = cache[t.cliente_id] || T('empresa', 'Empresa');
     const act = D().rol === 'asistente'
       ? `data-act="docs-tarea" data-id="${esc(t.id)}" data-titulo="${esc(t.titulo)}" data-cliente="${esc(t.cliente_id)}"`
       : `data-act="expediente" data-id="${esc(t.cliente_id)}" data-nombre="${esc(empresa)}"`;
-    return `<div class="task-item ${color}"><div class="task-info"><h4>${esc(t.titulo)}</h4><p style="color:var(--text-muted);font-size:.85rem;"><strong>${esc(empresa)}</strong> | ${esc(t.responsable)} | Vence: ${esc(t.vencimiento)} | <b class="eti">${eti}</b></p></div><button class="btn-action" ${act}>${D().rol === 'asistente' ? 'Documentos' : 'Ver expediente'}</button></div>`;
+    return `<div class="task-item ${color}"><div class="task-info"><h4>${esc(t.titulo)}</h4><p style="color:var(--text-muted);font-size:.85rem;"><strong>${esc(empresa)}</strong> | ${esc(t.responsable)} | Vence: ${esc(t.vencimiento)} | <b class="eti">${eti}</b></p></div><button class="btn-action" ${act}>${D().rol === 'asistente' ? 'Documentos' : T('ver_ficha', 'Ver expediente')}</button></div>`;
   }).join('');
 }
 
@@ -212,14 +213,14 @@ function pintarEmpresas() {
   const lista = empresas.filter((e) => !q || e.nombre.toLowerCase().includes(q) || String(e.cuit).includes(q) || `${e.masc} ${e.fam}`.toLowerCase().includes(q));
   $('lista-expedientes').innerHTML = lista.length ? lista.map((e) => `
     <button type="button" class="exp-card" data-act="${modo}" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">
-      <b>${esc(e.nombre)}</b><small>CUIT ${esc(e.cuit)}</small>${e.masc ? `<small>Mascotas: ${esc(e.masc)}</small>` : ''}
-      <span class="exp-meta"><span>${e.abiertas} ${e.abiertas === 1 ? 'proceso abierto' : 'procesos abiertos'}</span>${e.docs ? `<span class="exp-doc">${e.docs} ${e.docs === 1 ? 'documento por procesar' : 'documentos por procesar'}</span>` : ''}</span>
+      <b>${esc(e.nombre)}</b><small>${e.cuit ? T('id_label', 'CUIT') + ' ' + esc(e.cuit) : ''}</small>${e.masc ? `<small>Mascotas: ${esc(e.masc)}</small>` : ''}
+      <span class="exp-meta"><span>${e.abiertas} ${e.abiertas === 1 ? T('proceso', 'proceso abierto') : T('procesos_n', 'procesos abiertos')}</span>${e.docs ? `<span class="exp-doc">${e.docs} ${e.docs === 1 ? 'documento por procesar' : 'documentos por procesar'}</span>` : ''}</span>
     </button>`).join('') : '<p class="vacio">No hay empresas que coincidan.</p>';
 }
 async function renderExpedientes() {
   const modo = D().modoExp === 'buzon' ? 'buzon' : 'expediente';
   $('titulo-expedientes').innerText = modo === 'buzon' ? (window.DOMINO_T ? window.DOMINO_T('buzon', 'Buzón documental') : 'Buzón documental') : (window.DOMINO_T ? window.DOMINO_T('expedientes', 'Expedientes') : 'Expedientes');
-  $('expedientes-ayuda').innerText = modo === 'buzon' ? 'Elegí la empresa para cargar documentos recibidos o enviarle documentación.' : (window.DOMINO_T ? window.DOMINO_T('ayuda_expediente', 'Elegí la empresa para ver sus procesos y documentos.') : 'Elegí la empresa para ver sus procesos y documentos.');
+  $('expedientes-ayuda').innerText = modo === 'buzon' ? T('buscar_ayuda_buzon', 'Elegí la empresa para cargar documentos recibidos o enviarle documentación.') : (window.DOMINO_T ? window.DOMINO_T('ayuda_expediente', 'Elegí la empresa para ver sus procesos y documentos.') : 'Elegí la empresa para ver sus procesos y documentos.');
   $('lista-expedientes').innerHTML = '<p class="vacio">Cargando…</p>';
   try { await cargarEmpresas(); pintarEmpresas(); } catch (e) { console.error(e); $('lista-expedientes').innerHTML = '<p class="vacio">No se pudieron cargar las empresas.</p>'; }
   D().modoExp = 'expediente';
@@ -273,8 +274,8 @@ function pintarDia() {
     const fin = t.estado === ESTADO_FIN;
     const act = D().rol === 'asistente'
       ? `data-act="docs-tarea" data-id="${esc(t.id)}" data-titulo="${esc(t.titulo)}" data-cliente="${esc(t.cliente_id)}"`
-      : `data-act="expediente" data-id="${esc(t.cliente_id)}" data-nombre="${esc(cache[t.cliente_id] || 'Empresa')}"`;
-    return `<div class="task-item ${fin ? 'border-verde' : 'border-ambar'}"><div class="task-info"><h4>${esc(t.titulo)}</h4><p style="color:var(--text-muted);font-size:.85rem;"><strong>${esc(cache[t.cliente_id] || 'Empresa')}</strong> | ${esc(t.responsable)} | Estado: ${esc(t.estado)}</p></div><button class="btn-action" ${act}>${D().rol === 'asistente' ? 'Documentos' : 'Ver expediente'}</button></div>`;
+      : `data-act="expediente" data-id="${esc(t.cliente_id)}" data-nombre="${esc(cache[t.cliente_id] || T('empresa', 'Empresa'))}"`;
+    return `<div class="task-item ${fin ? 'border-verde' : 'border-ambar'}"><div class="task-info"><h4>${esc(t.titulo)}</h4><p style="color:var(--text-muted);font-size:.85rem;"><strong>${esc(cache[t.cliente_id] || 'Empresa')}</strong> | ${esc(t.responsable)} | Estado: ${esc(t.estado)}</p></div><button class="btn-action" ${act}>${D().rol === 'asistente' ? 'Documentos' : T('ver_ficha', 'Ver expediente')}</button></div>`;
   }).join('') : '<p class="vacio">No hay vencimientos este día.</p>';
 }
 $('cal-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; calSel = b.dataset.f; pintarCalendario(); });
@@ -285,7 +286,7 @@ $('cal-hoy').addEventListener('click', () => { calMes = new Date(); calMes.setDa
 // ---------------------------------------------------------------
 // EQUIPO
 // ---------------------------------------------------------------
-const NIVELES = [['senior', 'Profesional Senior'], ['midsenior', 'Profesional Mid Senior'], ['asistente', 'Asistente']];
+const NIVELES = [['senior', T('rol_senior', 'Profesional Senior')], ['midsenior', T('rol_midsenior', 'Profesional Mid Senior')], ['asistente', T('rol_asistente', 'Asistente')]];
 let equipoCache = [];
 async function renderEquipo() {
   const cont = $('lista-equipo');
@@ -464,7 +465,7 @@ function buscarEnInicio() {
   const lista = empresas.filter((e) => e.nombre.toLowerCase().includes(q) || `${e.masc} ${e.fam}`.toLowerCase().includes(q) || String(e.cuit).replace(/\D/g, '').includes(q.replace(/\D/g, '') || '§')).slice(0, 6);
   out.innerHTML = lista.length ? lista.map((e) => `
     <div class="q-fila">
-      <div class="q-txt"><b>${esc(e.nombre)}</b><small>CUIT ${esc(e.cuit)}${e.masc ? ' · Mascotas: ' + esc(e.masc) : ''} · ${e.abiertas} ${e.abiertas === 1 ? 'proceso abierto' : 'procesos abiertos'}${e.docs ? ` · ${e.docs} por procesar` : ''}</small></div>
+      <div class="q-txt"><b>${esc(e.nombre)}</b><small>${e.cuit ? T('id_label', 'CUIT') + ' ' + esc(e.cuit) : ''}${e.masc ? ' · Mascotas: ' + esc(e.masc) : ''} · ${e.abiertas} ${e.abiertas === 1 ? T('proceso', 'proceso abierto') : T('procesos_n', 'procesos abiertos')}${e.docs ? ` · ${e.docs} por procesar` : ''}</small></div>
       <div class="q-acc">
         <button type="button" class="btn-primary" data-act="expediente" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Expediente</button>
         <button type="button" class="btn-secundario" data-act="buzon" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Buzón</button>

@@ -96,3 +96,9 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 - Mientras no esté habilitada, el Hub la muestra con la etiqueta **«Próximamente»**, avisa si se la toca y **no deja cargar archivos**. Así nadie piensa que un documento quedó guardado cuando no es así.
 - Siguen funcionando las herramientas que no guardan archivos: la hoja unificada A4 y el unificador de archivos en PDF (el resultado se descarga al teléfono o a la computadora).
 - Se habilita cambiando `DOCUMENTOS` a `true` en `modulos.js`, cuando el almacenamiento esté activo y probado.
+
+
+## Marca del negocio y pantalla de ingreso
+- La pantalla de ingreso muestra solo el logo de DOMino.
+- Dentro del Hub, el menú lateral muestra el logo y el nombre del negocio que contrata (veterinaria, estudio, etc.), no los de DOMino. Si todavía no se cargó el logo, se ve el de DOMino.
+- En la versión de veterinaria, los textos hablan de dueños y mascotas, seguimientos y equipo de la veterinaria; los niveles se llaman Dirección, Veterinario/a y Recepción (por dentro siguen siendo senior, midsenior y asistente).
