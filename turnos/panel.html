@@ -162,7 +162,7 @@ function pDetalle(aviso) {
   <div class="acc">${sg.map(([e, tx]) => `<button class="btn" data-e="${E(e)}">${E(tx)}</button>`).join('')}
   <a class="btn sec" style="text-align:center;text-decoration:none;display:grid;place-items:center" href="${E(waLink(t.contacto_tel, hola))}" target="_blank" rel="noopener">Escribir por WhatsApp</a>
   <a class="btn sec" style="text-align:center;text-decoration:none;display:grid;place-items:center" href="tel:${E(limpiaTel(t.contacto_tel))}">Llamar</a>
-  <button class="btn sec" id="hist">Historial del cliente</button>${t.cliente_id ? '' : '<button class="btn" id="vinc">Vincular con la ficha</button>'}
+  <button class="btn sec" id="hist">Historial del cliente</button>${t.cliente_id ? (mismaP(t.contacto_nombre, t.cliente_nombre) ? '' : '<button class="btn" id="rel">Indicar relación con ' + E(t.cliente_nombre || 'el responsable') + '</button>') : '<button class="btn" id="vinc">Vincular con la ficha</button>'}
   ${act ? '<button class="btn sec" id="rep">Reprogramar</button><button class="btn peligro" id="can">Cancelar turno</button>' : ''}</div><div id="zona"></div>`;
   $('#v').onclick = () => { S.det = null; pintar(); };
   M.querySelectorAll('[data-e]').forEach(b => b.onclick = async () => { if (S.busy) return; S.busy = true; M.querySelectorAll('button').forEach(x => x.disabled = true); b.textContent = 'Guardando…'; const r = await api('cambiar_estado', { id: t.id, estado: b.dataset.e }); S.busy = false; if (!r.ok) return pDetalle(err(r.error)); t.estado = b.dataset.e; badge(); pDetalle('<div class="ok"><b>Listo.</b> El turno quedó «' + E(t.estado) + '».</div>'); });
@@ -170,6 +170,12 @@ function pDetalle(aviso) {
   const rep = $('#rep'); if (rep) rep.onclick = () => repro(t);
   $('#hist').onclick = () => historial({ cliente_id: t.cliente_id, tel: t.contacto_tel, nombre: t.contacto_nombre });
   const vi = $('#vinc'); if (vi) vi.onclick = () => vincular(t);
+  const rl = $('#rel'); if (rl) rl.onclick = async () => {
+    rl.disabled = true; const z = $('#zona'); z.innerHTML = '<div class="cargando">Conectando…</div>'; const c = await conectar();
+    if (!c.ok) { z.innerHTML = `<div class="err"><b>Falta ingresar al Hub.</b> Entre primero a DOMino Profesional con su usuario del estudio y vuelva.</div>`; rl.disabled = false; return; }
+    const rel = await pedirRelacion(t.contacto_nombre, t.cliente_nombre, z); if (!rel) { z.innerHTML = ''; rl.disabled = false; return; }
+    try { await fch.sumarPersona(t.cliente_id, t.contacto_nombre, rel, t.contacto_tel); pDetalle('<div class="ok"><b>Listo.</b> ' + E(t.contacto_nombre) + ' figura como ' + E(rel.toLowerCase()) + ' de ' + E(t.cliente_nombre) + '.</div>'); } catch (e) { z.innerHTML = err('sin_permiso'); rl.disabled = false; }
+  };
 }
 // ── Ficha del cliente ──
 async function historial(q) {
@@ -193,26 +199,33 @@ async function vincular(t) {
   <button class="btn sec" id="nueva">Crear una ficha nueva con estos datos</button><div id="vz"></div>`;
   const enlazar = () => z0.querySelectorAll('[data-f]').forEach(b => b.onclick = () => elegir(b.dataset.f, b.dataset.n));
   $('#bq').oninput = () => { const q = $('#bq').value; $('#bl').innerHTML = q.trim() ? (fch.buscar(todas, q).map(fila).join('') || '<div class="vacio">Sin resultados.</div>') : ''; enlazar(); };
-  const REL = ['Esposo/a', 'Pareja', 'Hijo/a', 'Padre / madre', 'Hermano/a', 'Primo/a', 'Otro familiar', 'Vecino/a', 'Amigo/a', 'Otra relación'];
   const elegir = (id, nombre) => {
-    const mismo = fch.mismaPersona(nombre, t.contacto_nombre);
-    if (mismo) return hecho(id, nombre, null);
+    if (mismaP(nombre, t.contacto_nombre)) return hecho(id, nombre, null);
     z0.querySelectorAll('button').forEach(b => b.disabled = true);
-    $('#vz').innerHTML = `<div class="rec" style="margin-top:12px"><b>${E(t.contacto_nombre)}</b> no es ${E(nombre)}.<span class="msg">Responsable de la ficha: ${E(nombre)}. Aclare qué relación tiene ${E(t.contacto_nombre)} con el responsable.</span><label for="rl">Relación</label><select id="rl">${REL.map(r => `<option>${r}</option>`).join('')}</select><button class="btn" id="rg">Vincular y guardar relación</button><button class="btn sec" id="rc">Cancelar</button></div>`;
-    $('#rg').onclick = () => hecho(id, nombre, $('#rl').value);
-    $('#rc').onclick = () => { z0.querySelectorAll('button').forEach(b => b.disabled = false); $('#vz').innerHTML = ''; };
-    $('#vz').scrollIntoView({ block: 'center' });
+    pedirRelacion(t.contacto_nombre, nombre, $('#vz')).then(rel => { if (rel) hecho(id, nombre, rel); else { z0.querySelectorAll('button').forEach(b => b.disabled = false); $('#vz').innerHTML = ''; } });
   };
   const hecho = async (id, nombre, relacion) => {
     const bs = z0.querySelectorAll('button'); bs.forEach(b => b.disabled = true);
     const r = await api('vincular_cliente', { id: t.id, cliente_id: id, cliente_nombre: nombre });
     if (!r.ok) { bs.forEach(b => b.disabled = false); $('#vz').innerHTML = err(r.error); return; }
     try { await sumarMascota(id, t.sujeto_nombre, t.sujeto_tipo); if (relacion) await fch.sumarPersona(id, t.contacto_nombre, relacion, t.contacto_tel); } catch (e) {}
-    S.ag.turnos.forEach(x => { if (String(x.id) === String(t.id) || (!x.cliente_id && limpiaTel(x.contacto_tel) === limpiaTel(t.contacto_tel))) { x.cliente_id = id; x.cliente_nombre = nombre; } });
+    const otros = [];
+    S.ag.turnos.forEach(x => { if (String(x.id) === String(t.id) || (!x.cliente_id && limpiaTel(x.contacto_tel) === limpiaTel(t.contacto_tel))) { if (String(x.id) !== String(t.id) && !mismaP(x.contacto_nombre, nombre) && !mismaP(x.contacto_nombre, t.contacto_nombre) && !otros.some(o => mismaP(o, x.contacto_nombre))) otros.push(x.contacto_nombre); x.cliente_id = id; x.cliente_nombre = nombre; } });
+    for (const o of otros) { z0.innerHTML = '<h2>Otro nombre en la ficha</h2><div id="vz2"></div>'; const rel = await pedirRelacion(o, nombre, $('#vz2')); if (rel) { try { await fch.sumarPersona(id, o, rel, t.contacto_tel); } catch (e) {} } }
     pDetalle(`<div class="ok"><b>Listo.</b> ${E(nombre)} quedó vinculada${relacion ? ' · ' + E(t.contacto_nombre) + ' figura como ' + E(relacion.toLowerCase()) : ''}${r.vinculados > 1 ? ' (también sus otros ' + (r.vinculados - 1) + ' turnos)' : ''}.</div>`);
   };
   enlazar();
   $('#nueva').onclick = async () => { $('#nueva').disabled = true; $('#nueva').textContent = 'Creando…'; try { const f = await crearFicha({ nombre: t.contacto_nombre, tel: t.contacto_tel, email: t.contacto_email, sujeto_nombre: t.sujeto_nombre, sujeto_tipo: t.sujeto_tipo }); await hecho(f.id, f.nombre); } catch (e) { $('#vz').innerHTML = err('sin_permiso'); $('#nueva').disabled = false; $('#nueva').textContent = 'Crear una ficha nueva con estos datos'; } };
+}
+const norm_ = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+const mismaP = (a, b) => { const x = norm_(a), y = norm_(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)); };
+const REL = ['Esposo/a', 'Pareja', 'Hijo/a', 'Padre / madre', 'Hermano/a', 'Primo/a', 'Otro familiar', 'Vecino/a', 'Amigo/a', 'Otra relación'];
+// Pregunta qué relación tiene `persona` con el responsable de la ficha. Resuelve con la relación elegida o null si se omite.
+function pedirRelacion(persona, responsable, caja) {
+  return new Promise(res => {
+    caja.innerHTML = `<div class="rec" style="margin-top:12px"><b>${E(persona)}</b> no es ${E(responsable)}.<span class="msg">Responsable de la ficha: ${E(responsable)}. Aclare qué relación tiene ${E(persona)} con el responsable.</span><label for="rl">Relación</label><select id="rl">${REL.map(r => `<option>${r}</option>`).join('')}</select><button class="btn" id="rg">Guardar relación</button><button class="btn sec" id="rc">Omitir</button></div>`;
+    $('#rg').onclick = () => res($('#rl').value); $('#rc').onclick = () => res(null); caja.scrollIntoView({ block: 'center' });
+  });
 }
 let fch = null; const conectar = async () => { fch = fch || await import('./fichas.js'); return fch.conectar(); };
 const crearFicha = (...a) => fch.crearFicha(...a), sumarMascota = (...a) => fch.sumarMascota(...a);
