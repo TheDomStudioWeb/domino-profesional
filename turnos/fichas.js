@@ -64,3 +64,25 @@ export async function sumarPersona(id, nombre, relacion, tel) {
   const c = s.data(); if (mismaPersona(c.nombre_empresa, nombre) || (c.personas || []).some(p => mismaPersona(p.nombre, nombre))) return;
   await fs.updateDoc(ref, { personas: fs.arrayUnion({ nombre: String(nombre).trim(), relacion: String(relacion || '').trim(), telefono: String(tel || '').trim() }) });
 }
+
+export async function datosDe(id) {
+  try { const { fs, db } = F; const s = await fs.getDoc(fs.doc(db, 'clients', id)); if (!s.exists()) return null; const c = s.data(); return { nombre: c.nombre_empresa || '', telefono: c.telefono || '', email: c.email_contacto || '' }; } catch (e) { return null; }
+}
+const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const difDias = s => Math.round((new Date(s + 'T12:00:00') - new Date(hoyISO() + 'T12:00:00')) / 86400000);
+// Controles de la libreta que vencieron (hasta 90 días atrás) o vencen en los próximos `ventana` días, sin turno ya agendado
+// y sin un registro más nuevo del mismo tipo para esa mascota.
+export async function controles(ventana = 30) {
+  const { fs, db } = F, snap = await fs.getDocs(fs.query(fs.collection(db, 'clients'), fs.where('estado', '==', 'activo'))), out = [];
+  snap.forEach(d => { const c = d.data(); (c.mascotas || []).forEach(m => { const ls = m.libreta || []; ls.forEach(e => {
+    if (!e.proxima || e.agendado) return; const n = difDias(e.proxima); if (n > ventana || n < -90) return;
+    if (ls.some(o => o !== e && o.tipo === e.tipo && (o.fecha || '') > (e.fecha || ''))) return;
+    out.push({ cid: d.id, dueno: c.nombre_empresa || '', tel: c.telefono || '', mascota: m.nombre, tipo: m.tipo || 'Perro', control: e.tipo, proxima: e.proxima, reg: e.id, dias: n });
+  }); }); });
+  return out.sort((a, b) => a.proxima.localeCompare(b.proxima));
+}
+export async function marcarAgendado(cid, mascota, regId, fecha) {
+  const { fs, db } = F, ref = fs.doc(db, 'clients', cid), s = await fs.getDoc(ref); if (!s.exists()) return;
+  const m = (s.data().mascotas || []).map(x => x.nombre === mascota ? { ...x, libreta: (x.libreta || []).map(e => e.id === regId ? { ...e, agendado: fecha } : e) } : x);
+  await fs.updateDoc(ref, { mascotas: m });
+}

@@ -484,7 +484,7 @@ window.mostrarFichaDatos = async function (id) {
   if (!turnos && !c.telefono && !c.email_contacto && !(c.mascotas || []).length && !(c.personas || []).length) return;
   const tel = String(c.telefono || '').replace(/\D/g, '');
   const nombreFicha = c.nombre_empresa || '';
-  let pers = c.personas || [], abierta = null;
+  let pers = c.personas || [], abierta = null, ctl = null;
   const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   const dmy = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '') ? s.split('-').reverse().join('/') : '';
   const dias = (s) => Math.round((new Date(s + 'T12:00:00') - new Date(hoyISO() + 'T12:00:00')) / 86400000);
@@ -493,7 +493,8 @@ window.mostrarFichaDatos = async function (id) {
   const TIPOS = ['Vacuna', 'Antirrábica', 'Desparasitación', 'Consulta', 'Cirugía', 'Peso', 'Otro'];
   const libretaHTML = (x) => {
     const ls = (x.libreta || []).slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')), st = estadoLib(x);
-    return `<div class="libreta"><h4>Libreta sanitaria · ${esc(x.nombre)}</h4>
+    const nuevoTurno = ctl ? `<div class="lib-ok"><b>Control cargado para el ${dmy(ctl.proxima)}.</b> ¿Lo coordinamos ahora?<div class="lib-acc">${turnos ? `<a class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center" href="turnos/panel.html?nuevo=1&cliente=${encodeURIComponent(id)}&fecha=${ctl.proxima}&mascota=${encodeURIComponent(x.nombre)}&tipo=${encodeURIComponent(x.tipo || '')}&nota=${encodeURIComponent('Control de ' + ctl.tipo.toLowerCase())}&reg=${encodeURIComponent(ctl.id)}">Agendar turno</a>` : ''}<button type="button" class="btn-secundario" id="lib-ics">Agregar a mi calendario</button><button type="button" class="btn-secundario" id="lib-no">Más tarde</button></div></div>` : '';
+    return `<div class="libreta"><h4>Libreta sanitaria · ${esc(x.nombre)}</h4>${nuevoTurno}
     ${st.vencidas.length ? `<div class="lib-alerta">Vencido: ${st.vencidas.map((e) => esc(e.tipo) + ' (' + dmy(e.proxima) + ')').join(', ')}</div>` : ''}${st.prox ? `<div class="lib-ok">Próximo vencimiento: ${dmy(st.prox)} · en ${dias(st.prox)} ${dias(st.prox) === 1 ? 'día' : 'días'}</div>` : ''}
     <div class="lib-lista">${ls.length ? ls.map((e) => `<div class="lib-fila"><b>${dmy(e.fecha)}</b><span>${esc(e.tipo)}${e.detalle ? ' — ' + esc(e.detalle) : ''}${e.proxima ? `<small>Próxima: ${dmy(e.proxima)}</small>` : ''}</span><button data-le="${esc(e.id)}" aria-label="Quitar registro">×</button></div>`).join('') : '<i>Sin registros todavía.</i>'}</div>
     <form class="libreta-alta" id="lib-form"><label>Qué<select id="lb-t">${TIPOS.map((t) => `<option>${t}</option>`).join('')}</select></label><label>Fecha<input id="lb-f" type="date" value="${hoyISO()}" required></label><label class="lb-det">Detalle (producto, peso, nota)<input id="lb-d" maxlength="120" placeholder="Ej. Sextuple, lote 123 / 12,4 kg"></label><label>Próxima<input id="lb-p" type="date"></label><button class="btn-secundario" type="submit">Guardar registro</button></form>
@@ -516,8 +517,16 @@ window.mostrarFichaDatos = async function (id) {
     bloque.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { abierta = abierta === +b.dataset.l ? null : +b.dataset.l; pintar(m); });
     const lf = bloque.querySelector('#lib-form');
     if (lf) {
-      lf.onsubmit = async (ev) => { ev.preventDefault(); const f = bloque.querySelector('#lb-f').value; if (!f) return; const reg = { id: 'r' + Date.now().toString(36), tipo: bloque.querySelector('#lb-t').value, fecha: f, detalle: bloque.querySelector('#lb-d').value.trim(), proxima: bloque.querySelector('#lb-p').value || '' }; const nueva = m.map((x, i) => i === abierta ? { ...x, libreta: [...(x.libreta || []), reg] } : x); try { await guardarMasc(nueva); m = nueva; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo guardar el registro.', 'error'); } };
+      lf.onsubmit = async (ev) => { ev.preventDefault(); const f = bloque.querySelector('#lb-f').value; if (!f) return; const reg = { id: 'r' + Date.now().toString(36), tipo: bloque.querySelector('#lb-t').value, fecha: f, detalle: bloque.querySelector('#lb-d').value.trim(), proxima: bloque.querySelector('#lb-p').value || '' }; const nueva = m.map((x, i) => i === abierta ? { ...x, libreta: [...(x.libreta || []), reg] } : x); try { await guardarMasc(nueva); m = nueva; ctl = reg.proxima ? reg : null; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo guardar el registro.', 'error'); } };
       bloque.querySelectorAll('[data-le]').forEach(b => b.onclick = async () => { const nueva = m.map((x, i) => i === abierta ? { ...x, libreta: (x.libreta || []).filter((e) => e.id !== b.dataset.le) } : x); try { await guardarMasc(nueva); m = nueva; pintar(m); } catch (e) { D().aviso && D().aviso('No se pudo quitar.', 'error'); } });
+      const ics = bloque.querySelector('#lib-ics'), no = bloque.querySelector('#lib-no');
+      if (no) no.onclick = () => { ctl = null; pintar(m); };
+      if (ics) ics.onclick = () => {
+        const f = ctl.proxima.replace(/-/g, ''), sig = (() => { const d = new Date(ctl.proxima + 'T12:00:00'); d.setDate(d.getDate() + 1); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; })();
+        const tx = `Control de ${m[abierta].nombre}: ${ctl.tipo} (${nombreFicha})`, esc2 = (s) => String(s).replace(/[\\;,]/g, '\\$&');
+        const cuerpo = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//The DOM Studio Web//DOMino//ES', 'BEGIN:VEVENT', `UID:${ctl.id}@domino`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`, `DTSTART;VALUE=DATE:${f}`, `DTEND;VALUE=DATE:${sig}`, `SUMMARY:${esc2(tx)}`, 'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc2(tx)}`, 'TRIGGER:-P7D', 'END:VALARM', 'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc2(tx)}`, 'TRIGGER:-P1D', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([cuerpo], { type: 'text/calendar' })); a.download = 'control-' + m[abierta].nombre.replace(/\W+/g, '_') + '.ics'; document.body.appendChild(a); a.click(); a.remove();
+      };
       bloque.querySelector('#lib-doc').onclick = () => { if (window.abrirBuzon) window.abrirBuzon(); };
     }
     const f = bloque.querySelector('#ficha-masc');
