@@ -1,0 +1,52 @@
+# DOMino Turnos — manual interno para Claudio
+
+Usalo para explicar la agenda de turnos a quien pregunte. Hablá en voseo con el equipo de Daniel y de usted con clientes nuevos. Nunca des claves ni direcciones privadas.
+
+## Qué es
+DOMino Turnos es el anexo de agenda de DOMino Profesional. Sirve a veterinarias, consultorios, gimnasios y cualquier negocio que atienda con turno. Tiene tres partes:
+1. **Página de reserva** (para el cliente final): reserva sola desde el celular en tres pasos.
+2. **Agenda del personal** (panel): ver, confirmar, mover y cancelar turnos; cargar uno nuevo.
+3. **Avisos de mañana**: lista de turnos del día siguiente con el mensaje de WhatsApp ya escrito.
+
+Los datos viven en una planilla de Google del propio negocio. No tiene costo de servidor. Si el negocio crece mucho se puede pasar a un servidor propio, que sí tiene costo permanente y se avisa antes.
+
+## Cómo reserva el cliente
+1. Recibe el enlace (por WhatsApp, Instagram o QR).
+2. Elige el servicio, el día, la hora y el profesional.
+3. Carga nombre, teléfono, correo (opcional), mascota si es veterinaria, y tilda la autorización para que lo contacten.
+4. Recibe un enlace propio para ver o cancelar su turno (hasta unas horas antes; el plazo lo define el negocio).
+- En **modo solicitud** (el elegido para empezar) el turno queda «Por confirmar» hasta que recepción lo confirma. En modo inmediato queda confirmado.
+- Si dos personas piden el mismo horario a la vez, entra una sola; a la otra se le pide elegir otro.
+- No puede pedir más de 3 turnos por día con el mismo teléfono.
+
+## Cómo trabaja el personal
+Ingresa con correo y clave en la agenda. Hay cuatro niveles:
+- **Senior y Mid Senior:** ven toda la agenda, cargan y mueven turnos, y crean bloqueos (feriados, vacaciones).
+- **Asistente (recepción):** ve toda la agenda, carga, confirma, mueve y cancela turnos; no crea bloqueos.
+- **Profesional:** ve y maneja solo su propia agenda.
+
+Pantallas (barra de abajo): **Agenda** (turnos del día, por profesional; el número rojo indica solicitudes por confirmar), **Nuevo** (cargar un turno en pocos toques), **Avisos** (turnos de mañana), **Más** (enlace de reserva y bloqueos).
+
+Estados del turno: Por confirmar → Confirmado → En sala («Llegó») → Atendido. También: Cancelado, No vino (solo después de la hora) y Reprogramado. Un turno nunca se borra: queda en el historial.
+
+## Avisos de mañana
+- Cada fila abre WhatsApp con el mensaje armado; una persona lo envía. Es gratis.
+- Si el cliente dio su correo y aceptó, el sistema también le manda un recordatorio automático por correo a las 18:00 del día anterior (gratis, hasta unos 100 por día).
+- Un WhatsApp automático (sin tocar nada) existe pero tiene costo mensual permanente.
+
+## Lo que hay que decir con honestidad
+- Cada acción tarda unos 3 segundos: es el límite del plan gratuito de Google.
+- La planilla de Google no cifra los datos por sí sola: por eso se guarda lo mínimo (nombre, contacto, servicio y un comentario) y **nada clínico**. Para datos de salud de personas hay que revisar la normativa antes de usarlo.
+- Los costos existen: instalación y mantenimiento los define Daniel por proyecto (no los cotices); todo puede personalizarse.
+
+## Qué responder
+- «No me llega el correo»: el cliente puede no haber dado correo o no haber tildado la autorización; revisar spam.
+- «No puedo cancelar»: pasó el plazo; que llame al negocio.
+- «No veo horarios»: el profesional no atiende ese día, hay un bloqueo, o faltan menos horas que la anticipación mínima.
+- «Se me cerró la sesión»: la sesión dura 30 días; volver a ingresar. Tras 5 claves incorrectas se bloquea 10 minutos.
+- «Cambié servicios u horarios en la planilla y no se ven»: tardan hasta 60 segundos.
+
+## Datos técnicos mínimos
+- Servicio: Google Apps Script (`turnos/apps-script/Code.gs`) sobre una planilla con las hojas config, recursos, servicios, horarios, bloqueos, turnos, slots y usuarios.
+- Páginas: `turnos/reserva.html` (público) y `turnos/panel.html` (personal). La dirección del servicio está en `turnos/config.js`.
+- En el Hub de DOMino Profesional aparece el grupo «Agenda y turnos» cuando el módulo está activado en `modulos.js`.

@@ -23,4 +23,6 @@ Con sesión: `login`, `agenda`, `crear_turno`, `cambiar_estado`, `reprogramar`, 
 ## Qué está probado y qué no
 - Probado en simulación (25 pruebas): disponibilidad, doble reserva, solapes de servicios largos, bloqueos, estados, reprogramación, permisos por rol, clave protegida, bloqueo por intentos, sesión vencida, correo único.
 - **No probado** en Google real: la concurrencia verdadera del cerrojo (LockService), las cuotas de correo y la velocidad con muchos turnos. Es lo primero que hay que verificar al desplegar.
-- Pendiente: pantallas (panel de agenda y página de reserva) que consumen este servicio.
+- Pantallas: `reserva.html` (cliente), `panel.html` (personal: agenda, nuevo turno, avisos de mañana, bloqueos) y `prueba.html` (diagnóstico). Probadas en simulación; falta probarlas con el servicio real desde el celular.
+- Para mostrar el grupo «Agenda y turnos» en el Hub: `modulos.js` → `turnos: true`.
+- Manual para Claudio: `MANUAL_Claudio_DOMino_Turnos.md`.

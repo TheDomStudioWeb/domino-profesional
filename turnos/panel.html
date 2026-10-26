@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Agenda de turnos</title><meta name="theme-color" content="#0A0A0A">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Montserrat:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#0A0A0A;--pn:#16181C;--pn2:#1d2026;--tx:#F4F1EA;--mut:#b9b4a4;--gold:#D4AF37;--line:#2c2f36;--ok:#4CC38A;--err:#FF6B61;--warn:#E8C766;--bar:64px}
+[hidden]{display:none!important}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 Montserrat,system-ui,sans-serif;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:calc(var(--bar) + env(safe-area-inset-bottom) + 20px)}
+.w{max-width:720px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 0 10px;border-bottom:1px solid var(--line)}
+header h1{font:700 18px Cinzel,serif;color:var(--gold);margin:0;letter-spacing:.03em}header small{display:block;color:var(--mut);font:400 12.5px Montserrat}
+.lnk{background:none;border:0;color:var(--gold);font:600 14px Montserrat;cursor:pointer;min-height:44px;padding:0 6px}
+.dnav{display:flex;align-items:center;gap:8px;margin:14px 0 8px}
+.dnav button{background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:4px;min-width:48px;min-height:48px;font:700 20px Montserrat;cursor:pointer}
+.dnav .fecha{flex:1;text-align:center;font:600 17px Cinzel,serif}.dnav .fecha::first-letter{text-transform:uppercase}
+.dnav .hoy{font:600 13px Montserrat;padding:0 12px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px}
+.chip{flex:0 0 auto;background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:99px;padding:0 14px;min-height:42px;font:600 14px Montserrat;cursor:pointer;display:flex;align-items:center;gap:8px}
+.chip i{width:10px;height:10px;border-radius:50%;display:inline-block}.chip[aria-pressed=true]{border-color:var(--gold);background:var(--pn2);outline:1px solid var(--gold)}
+.alerta{background:var(--pn);border-left:3px solid var(--warn);padding:11px 14px;margin:6px 0 10px;border-radius:3px;font-size:14.5px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.alerta button{background:none;border:1px solid var(--warn);color:var(--warn);border-radius:4px;min-height:40px;padding:0 12px;font:600 13px Montserrat;cursor:pointer;flex:0 0 auto}
+.lista{display:grid;gap:10px}
+.tn{display:grid;grid-template-columns:62px 1fr;gap:12px;width:100%;text-align:left;background:var(--pn);color:var(--tx);border:1px solid var(--line);border-left:4px solid var(--c,var(--gold));border-radius:4px;padding:12px;font:inherit;cursor:pointer;min-height:68px}
+.tn:active,.tn:focus-visible{background:var(--pn2);outline:2px solid var(--gold)}
+.tn .h{font:700 18px Cinzel,serif}.tn .h small{display:block;font:400 12px Montserrat;color:var(--mut)}
+.tn b{display:block}.tn span.s{color:var(--mut);font-size:14px;display:block}
+.pill{display:inline-block;font:700 11.5px Montserrat;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--mut);color:var(--mut);padding:2px 8px;border-radius:99px;margin-top:5px}
+.pill.pc{border-color:var(--warn);color:var(--warn)}.pill.co{border-color:var(--gold);color:var(--gold)}.pill.es{border-color:var(--ok);color:var(--ok)}.pill.at{border-color:var(--ok);color:var(--ok);background:rgba(76,195,138,.1)}.pill.ca{border-color:var(--err);color:var(--err)}.pill.nv{border-color:var(--err);color:var(--err)}
+.vacio{color:var(--mut);text-align:center;padding:36px 8px;border:1px dashed var(--line);border-radius:4px}
+h2{font:600 20px Cinzel,serif;margin:16px 0 10px}
+label{display:block;margin:14px 0 6px;font-weight:600;font-size:15px}
+input,select,textarea{width:100%;background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:13px;font:inherit;min-height:52px}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--gold);border-color:var(--gold)}
+.btn{display:block;width:100%;background:var(--gold);color:#0A0A0A;border:0;border-radius:4px;padding:15px;font:700 16px Montserrat;margin-top:16px;cursor:pointer;min-height:54px;text-transform:uppercase;letter-spacing:.05em}.btn:disabled{opacity:.45}
+.btn.sec{background:none;color:var(--tx);border:1px solid var(--line)}.btn.peligro{background:none;color:var(--err);border:1px solid var(--err)}
+.acc{display:grid;gap:10px;margin-top:6px}.acc .btn{margin:0}
+.res{background:var(--pn);border:1px solid var(--line);border-radius:4px;padding:12px 14px;margin:10px 0}.res div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}.res div:last-child{border:0}.res span{color:var(--mut)}.res b{text-align:right;min-width:0;overflow-wrap:anywhere}
+.hs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}.hs button{background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:4px;min-height:48px;font:600 16px Montserrat;cursor:pointer}.hs button[aria-pressed=true]{background:var(--gold);color:#0A0A0A;border-color:var(--gold)}
+.err{border-left:3px solid var(--err);background:var(--pn);padding:12px 14px;margin:12px 0;border-radius:3px}.err b{color:var(--err)}
+.ok{border-left:3px solid var(--ok);background:var(--pn);padding:12px 14px;margin:12px 0;border-radius:3px}.ok b{color:var(--ok)}
+.cargando{color:var(--mut);text-align:center;padding:28px 0}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--pn);border-top:1px solid var(--gold);display:grid;grid-template-columns:repeat(4,1fr);padding:0 max(0px,env(safe-area-inset-left)) env(safe-area-inset-bottom) max(0px,env(safe-area-inset-right))}
+nav.tabs button{background:none;border:0;color:var(--mut);min-height:var(--bar);font:600 12.5px Montserrat;cursor:pointer;display:grid;place-items:center;gap:2px;padding:6px 2px;position:relative}
+nav.tabs button svg{width:24px;height:24px}nav.tabs button[aria-current=page]{color:var(--gold)}
+nav.tabs .n{position:absolute;top:6px;right:calc(50% - 26px);background:var(--warn);color:#0A0A0A;border-radius:99px;font:700 11px Montserrat;min-width:19px;height:19px;display:grid;place-items:center;padding:0 5px}
+.volver{background:none;border:0;color:var(--gold);font:600 16px Montserrat;padding:10px 0;cursor:pointer;min-height:44px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rec{background:var(--pn);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:grid;gap:8px}
+.rec .t{display:flex;justify-content:space-between;gap:8px}.rec .t b{min-width:0;overflow-wrap:anywhere}.rec .btn{margin:0;min-height:48px}
+.msg{font-size:14px;color:var(--mut);white-space:pre-wrap}
+footer{text-align:center;color:var(--mut);font-size:12.5px;padding:22px 0 0;margin-top:26px;border-top:1px solid var(--line)}
+.hp{position:absolute;left:-9999px}
+@media(min-width:520px){.hs{grid-template-columns:repeat(5,1fr)}}
+</style></head><body><div class="w">
+<header><div><h1 id="neg">Agenda de turnos</h1><small id="who"></small></div><button class="lnk" id="salir" hidden>Salir</button></header>
+<main id="m" aria-live="polite"><div class="cargando">Cargando…</div></main>
+<footer>Desarrollado por The DOM Studio Web · WhatsApp 261-3431216 · thedomstudioweb@gmail.com</footer>
+</div>
+<nav class="tabs" id="tabs" hidden aria-label="Secciones">
+<button data-t="agenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></svg>Agenda<span class="n" id="nPC" hidden></span></button>
+<button data-t="nuevo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nuevo</button>
+<button data-t="aviso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>Avisos</button>
+<button data-t="mas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg>Más</button>
+</nav>
+<script src="config.js"></script>
+<script type="module">
+import { llamar, msg as msgBase } from './api.js';
+const $ = s => document.querySelector(s), M = $('#m');
+const E = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const MSG = { sesion_invalida: 'Su sesión venció. Ingrese de nuevo.', usuario_invalido: 'Usuario o clave incorrectos.', clave_incorrecta: 'Usuario o clave incorrectos.', demasiados_intentos: 'Demasiados intentos. Espere 10 minutos.', sin_permiso: 'No tiene permiso para esa acción.', estado_invalido: 'Ese cambio de estado no está permitido.', aun_no_es_la_hora: 'Solo se puede marcar «No vino» pasada la hora del turno.', recurso_invalido: 'Ese profesional no atiende ese servicio.', horario_invalido: 'Horario inválido.' };
+const msg = e => MSG[e] || msgBase(e);
+const DS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], MS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const z = n => String(n).padStart(2, '0');
+const hoyL = () => { const d = new Date(); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
+const sumDias = (f, n) => { const d = new Date(f + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const dow = f => new Date(f + 'T00:00:00Z').getUTCDay();
+const corta = f => `${DS[dow(f)].slice(0, 3)} ${+f.slice(8)} ${MS[+f.slice(5, 7) - 1]}`;
+const largaF = f => `${DS[dow(f)]} ${+f.slice(8)} de ${MS[+f.slice(5, 7) - 1]}`;
+const addMin = (h, m) => { const t = (+h.slice(0, 2)) * 60 + (+h.slice(3, 5)) + m; return `${z(Math.floor(t / 60) % 24)}:${z(t % 60)}`; };
+const CLS = { 'Por confirmar': 'pc', Confirmado: 'co', 'En sala': 'es', Atendido: 'at', Cancelado: 'ca', 'No vino': 'nv', Reprogramado: '' };
+const SIG = { 'Por confirmar': [['Confirmado', 'Confirmar turno']], Confirmado: [['En sala', 'Llegó'], ['No vino', 'No vino']], 'En sala': [['Atendido', 'Atendido']] };
+const ACTIVOS = ['Por confirmar', 'Confirmado', 'En sala'];
+
+const S = { tok: null, user: null, ag: null, rango: null, fecha: hoyL(), rec: '', tab: 'agenda', det: null, busy: false, nu: {}, av: null };
+try { const g = JSON.parse(localStorage.getItem('turnos_sesion') || 'null'); if (g && g.tok) { S.tok = g.tok; S.user = g.user; } } catch (e) {}
+const guardarSes = () => { try { S.tok ? localStorage.setItem('turnos_sesion', JSON.stringify({ tok: S.tok, user: S.user })) : localStorage.removeItem('turnos_sesion'); } catch (e) {} };
+const api = async (a, d = {}) => { const r = await llamar(a, { ...d, token: S.tok }); if (!r.ok && r.error === 'sesion_invalida') { S.tok = null; S.user = null; guardarSes(); pintar(); } return r; };
+const err = e => `<div class="err" role="alert"><b>No se pudo.</b> ${E(msg(e))}</div>`;
+const gestion = () => ['Senior', 'Mid Senior'].includes(S.user && S.user.rol);
+
+// ── Entrada ──
+function pLogin(e) {
+  $('#tabs').hidden = true; $('#salir').hidden = true; $('#who').textContent = '';
+  M.innerHTML = `<h2>Ingresar</h2><form id="f" novalidate>${e ? err(e) : ''}<label for="em">Correo</label><input id="em" type="email" autocomplete="username" inputmode="email"><label for="cl">Clave</label><input id="cl" type="password" autocomplete="current-password"><button class="btn" id="go">Ingresar</button></form>`;
+  $('#f').onsubmit = async ev => { ev.preventDefault(); $('#go').disabled = true; $('#go').textContent = 'Ingresando…'; const r = await llamar('login', { email: $('#em').value, clave: $('#cl').value }); if (!r.ok) return pLogin(r.error); S.tok = r.token; S.user = r.usuario; guardarSes(); S.ag = null; pintar(); };
+}
+$('#salir').onclick = () => { S.tok = null; S.user = null; S.ag = null; S.tab = 'agenda'; S.det = null; S.nu = {}; S.rec = ''; S.fecha = hoyL(); guardarSes(); pintar(); };
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { S.tab = b.dataset.t; S.det = null; S.nu = {}; pintar(); window.scrollTo(0, 0); });
+
+async function cargarAgenda(forzar) {
+  const f = S.fecha;
+  if (!forzar && S.ag && S.rango && f >= S.rango[0] && f <= S.rango[1]) return true;
+  const desde = sumDias(f, -3 < 0 ? -3 : 0), hasta = sumDias(f, 30);
+  const r = await api('agenda', { desde, hasta });
+  if (!r.ok) { M.innerHTML = err(r.error) + '<button class="btn" id="re">Reintentar</button>'; const b = $('#re'); if (b) b.onclick = () => pintar(); return false; }
+  S.ag = r; S.rango = [desde, hasta]; document.title = 'Agenda · ' + r.config.nombre; $('#neg').textContent = r.config.nombre; return true;
+}
+const pend = () => (S.ag ? S.ag.turnos.filter(t => t.estado === 'Por confirmar' && t.fecha >= hoyL()) : []);
+const recDe = id => (S.ag.recursos.find(r => String(r.id) === String(id)) || {});
+const svDe = id => (S.ag.servicios.find(s => String(s.id) === String(id)) || {});
+function badge() { const n = pend().length, b = $('#nPC'); b.hidden = !n; b.textContent = n; }
+
+async function pintar() {
+  if (!S.tok) return pLogin();
+  $('#tabs').hidden = false; $('#salir').hidden = false; $('#who').textContent = `${S.user.nombre} · ${S.user.rol}`;
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.t === S.tab ? 'page' : 'false'));
+  if (!S.ag) M.innerHTML = '<div class="cargando">Cargando agenda…</div>';
+  if (!(await cargarAgenda())) return; badge();
+  if (S.det) return pDetalle();
+  ({ agenda: pAgenda, nuevo: pNuevo, aviso: pAviso, mas: pMas }[S.tab] || pAgenda)();
+}
+
+// ── Agenda ──
+function pAgenda() {
+  const recs = S.ag.recursos.filter(r => String(r.activo).toLowerCase() !== 'no');
+  const del = S.ag.turnos.filter(t => t.fecha === S.fecha && (!S.rec || String(t.recurso_id) === S.rec)).sort((a, b) => String(a.hora).localeCompare(String(b.hora)));
+  const act = del.filter(t => ACTIVOS.includes(t.estado)), fin = del.filter(t => !ACTIVOS.includes(t.estado));
+  const pc = pend(), proximo = pc.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora))[0];
+  const tarj = t => { const c = recDe(t.recurso_id).color || '#D4AF37'; return `<button class="tn" data-id="${E(t.id)}" style="--c:${E(c)}"><div class="h">${E(t.hora)}<small>${E(addMin(t.hora, +t.duracion_min))}</small></div><div><b>${E(t.contacto_nombre)}${t.sujeto_nombre ? ' · ' + E(t.sujeto_nombre) : ''}</b><span class="s">${E(t.servicio || svDe(t.servicio_id).nombre || '')} · ${E(recDe(t.recurso_id).nombre || '')}</span><span class="pill ${CLS[t.estado] || ''}">${E(t.estado)}</span></div></button>`; };
+  M.innerHTML = `<div class="dnav"><button id="ant" aria-label="Día anterior">‹</button><div class="fecha">${E(largaF(S.fecha))}</div><button id="sig" aria-label="Día siguiente">›</button></div>
+  ${S.fecha !== hoyL() ? '<div style="text-align:center;margin-bottom:6px"><button class="lnk" id="hoy">Volver a hoy</button></div>' : ''}
+  ${recs.length > 1 ? `<div class="chips" role="group" aria-label="Profesional"><button class="chip" data-r="" aria-pressed="${!S.rec}">Todos</button>${recs.map(r => `<button class="chip" data-r="${E(r.id)}" aria-pressed="${S.rec === String(r.id)}"><i style="background:${E(r.color || '#D4AF37')}"></i>${E(r.nombre)}</button>`).join('')}</div>` : ''}
+  ${pc.length ? `<div class="alerta"><span><b>${pc.length}</b> solicitud${pc.length > 1 ? 'es' : ''} por confirmar${proximo ? ' · la próxima: ' + E(corta(proximo.fecha)) + ' ' + E(proximo.hora) : ''}</span>${proximo && proximo.fecha !== S.fecha ? '<button id="irpc">Ver</button>' : ''}</div>` : ''}
+  <div class="lista">${act.length ? act.map(tarj).join('') : '<div class="vacio">No hay turnos activos este día.</div>'}</div>
+  ${fin.length ? `<h2>Cerrados</h2><div class="lista">${fin.map(tarj).join('')}</div>` : ''}`;
+  $('#ant').onclick = () => { S.fecha = sumDias(S.fecha, -1); pintar(); }; $('#sig').onclick = () => { S.fecha = sumDias(S.fecha, 1); pintar(); };
+  const h = $('#hoy'); if (h) h.onclick = () => { S.fecha = hoyL(); pintar(); };
+  const ip = $('#irpc'); if (ip) ip.onclick = () => { S.fecha = proximo.fecha; pintar(); };
+  M.querySelectorAll('.chip').forEach(b => b.onclick = () => { S.rec = b.dataset.r; pAgenda(); });
+  M.querySelectorAll('.tn').forEach(b => b.onclick = () => { S.det = { id: b.dataset.id }; pintar(); window.scrollTo(0, 0); });
+}
+
+// ── Detalle del turno ──
+function limpiaTel(t) { return String(t || '').replace(/[^\d]/g, ''); }
+function waLink(tel, txt) { let d = limpiaTel(tel).replace(/^0+/, ''); if (!d.startsWith('54')) { d = d.replace(/^(\d{2,4})15(\d{6,8})$/, '$1$2'); d = '549' + d; } return 'https://wa.me/' + d + '?text=' + encodeURIComponent(txt || ''); }
+function pDetalle(aviso) {
+  const t = S.ag.turnos.find(x => String(x.id) === String(S.det.id)); if (!t) { S.det = null; return pintar(); }
+  const sg = SIG[t.estado] || [], act = ACTIVOS.includes(t.estado), negocio = S.ag.config.nombre;
+  const hola = `Hola ${t.contacto_nombre}, le escribimos de ${negocio} por su turno del ${corta(t.fecha)} a las ${t.hora}.`;
+  M.innerHTML = `<button class="volver" id="v">‹ Volver a la agenda</button><h2>${E(t.contacto_nombre)}</h2>${aviso || ''}
+  <div class="res"><div><span>Estado</span><b>${E(t.estado)}</b></div><div><span>Día y hora</span><b>${E(corta(t.fecha))} · ${E(t.hora)}–${E(addMin(t.hora, +t.duracion_min))}</b></div><div><span>Servicio</span><b>${E(t.servicio || svDe(t.servicio_id).nombre)}</b></div><div><span>Con</span><b>${E(recDe(t.recurso_id).nombre)}</b></div>${t.sujeto_nombre ? `<div><span>${E(t.sujeto_tipo || 'Mascota')}</span><b>${E(t.sujeto_nombre)}</b></div>` : ''}<div><span>Teléfono</span><b>${E(t.contacto_tel)}</b></div>${t.contacto_email ? `<div><span>Correo</span><b>${E(t.contacto_email)}</b></div>` : ''}${t.nota ? `<div><span>Comentario</span><b>${E(t.nota)}</b></div>` : ''}${t.motivo_cancelacion ? `<div><span>Motivo</span><b>${E(t.motivo_cancelacion)}</b></div>` : ''}<div><span>Origen</span><b>${t.origen === 'web' ? 'Reserva por la web' : 'Cargado en recepción'}</b></div></div>
+  <div class="acc">${sg.map(([e, tx]) => `<button class="btn" data-e="${E(e)}">${E(tx)}</button>`).join('')}
+  <a class="btn sec" style="text-align:center;text-decoration:none;display:grid;place-items:center" href="${E(waLink(t.contacto_tel, hola))}" target="_blank" rel="noopener">Escribir por WhatsApp</a>
+  <a class="btn sec" style="text-align:center;text-decoration:none;display:grid;place-items:center" href="tel:${E(limpiaTel(t.contacto_tel))}">Llamar</a>
+  ${act ? '<button class="btn sec" id="rep">Reprogramar</button><button class="btn peligro" id="can">Cancelar turno</button>' : ''}</div><div id="zona"></div>`;
+  $('#v').onclick = () => { S.det = null; pintar(); };
+  M.querySelectorAll('[data-e]').forEach(b => b.onclick = async () => { if (S.busy) return; S.busy = true; M.querySelectorAll('button').forEach(x => x.disabled = true); b.textContent = 'Guardando…'; const r = await api('cambiar_estado', { id: t.id, estado: b.dataset.e }); S.busy = false; if (!r.ok) return pDetalle(err(r.error)); t.estado = b.dataset.e; badge(); pDetalle('<div class="ok"><b>Listo.</b> El turno quedó «' + E(t.estado) + '».</div>'); });
+  const can = $('#can'); if (can) can.onclick = () => { $('#zona').innerHTML = `<div class="err"><b>¿Cancelar el turno?</b> Se libera el horario.</div><label for="mo">Motivo (opcional)</label><input id="mo" maxlength="150"><button class="btn peligro" id="si">Sí, cancelar</button><button class="btn sec" id="no">No, mantenerlo</button>`; $('#no').onclick = () => pDetalle(); $('#si').onclick = async () => { $('#si').disabled = true; $('#si').textContent = 'Cancelando…'; const r = await api('cambiar_estado', { id: t.id, estado: 'Cancelado', motivo: $('#mo').value }); if (!r.ok) return pDetalle(err(r.error)); t.estado = 'Cancelado'; t.motivo_cancelacion = $('#mo') ? $('#mo').value : ''; badge(); pDetalle('<div class="ok"><b>Turno cancelado.</b> El horario quedó libre.</div>'); }; $('#si').scrollIntoView({ block: 'center' }); };
+  const rep = $('#rep'); if (rep) rep.onclick = () => repro(t);
+}
+async function repro(t) {
+  const z0 = $('#zona'); let fecha = t.fecha >= hoyL() ? t.fecha : hoyL(), hora = null;
+  const dibujar = async () => {
+    z0.innerHTML = `<h2>Nuevo horario</h2><label for="rf">Día</label><input id="rf" type="date" value="${fecha}" min="${hoyL()}"><div id="hs" class="cargando">Buscando horarios…</div>`;
+    $('#rf').onchange = () => { fecha = $('#rf').value; hora = null; dibujar(); };
+    const r = await api('horarios_libres', { servicio_id: t.servicio_id, recurso_id: t.recurso_id, desde: fecha, dias: 1 });
+    if (!r.ok) { $('#hs').outerHTML = err(r.error); return; }
+    const hs = (r.dias[0] && r.dias[0].recursos[t.recurso_id]) || [];
+    $('#hs').outerHTML = hs.length ? `<div class="hs" id="hs">${hs.map(h => `<button data-h="${h}" aria-pressed="false">${h}</button>`).join('')}</div><button class="btn" id="ok" disabled>Mover turno</button><button class="btn sec" id="no">Dejarlo como está</button>` : '<div class="vacio" id="hs">Sin horarios libres ese día. Pruebe otro.</div>';
+    z0.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { hora = b.dataset.h; z0.querySelectorAll('[data-h]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('#ok').disabled = false; });
+    const no = $('#no'); if (no) no.onclick = () => pDetalle();
+    const ok = $('#ok'); if (ok) ok.onclick = async () => { ok.disabled = true; ok.textContent = 'Moviendo…'; const x = await api('reprogramar', { id: t.id, fecha, hora }); if (!x.ok) return pDetalle(err(x.error)); await cargarAgenda(true); S.fecha = fecha; S.det = { id: x.id }; badge(); pDetalle('<div class="ok"><b>Turno movido</b> a ' + E(corta(fecha)) + ' ' + E(hora) + '.</div>'); };
+  };
+  dibujar(); z0.scrollIntoView({ block: 'start' });
+}
+
+// ── Nuevo turno ──
+async function pNuevo() {
+  const n = S.nu, svs = S.ag.servicios.filter(s => String(s.activo).toLowerCase() !== 'no');
+  if (n.listo) { M.innerHTML = `<div class="ok"><b>Turno guardado.</b> ${E(corta(n.listo.fecha))} a las ${E(n.listo.hora)}.</div><button class="btn" id="otro">Cargar otro turno</button><button class="btn sec" id="ver">Ver en la agenda</button>`; $('#otro').onclick = () => { S.nu = {}; pNuevo(); }; $('#ver').onclick = () => { S.fecha = n.listo.fecha; S.rec = ''; S.nu = {}; S.tab = 'agenda'; pintar(); }; return; }
+  if (!n.sv) { M.innerHTML = `<h2>Nuevo turno</h2><p style="color:var(--mut);margin:0 0 10px">¿Qué servicio?</p><div class="lista">${svs.map(s => `<button class="tn" data-s="${E(s.id)}" style="grid-template-columns:1fr"><div><b>${E(s.nombre)}</b><span class="s">${s.duracion_min} min</span></div></button>`).join('')}</div>`; M.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { n.sv = b.dataset.s; n.fecha = hoyL(); n.hora = null; n.rec = null; pNuevo(); }); return; }
+  const sv = svDe(n.sv), recs = String(sv.recursos).split(',').map(x => x.trim()).filter(Boolean);
+  if (!n.rec) n.rec = recs[0];
+  M.innerHTML = `<button class="volver" id="v">‹ Cambiar servicio</button><h2>${E(sv.nombre)}</h2>
+  ${recs.length > 1 ? `<label for="pr">Profesional</label><select id="pr">${recs.map(r => `<option value="${E(r)}" ${r === n.rec ? 'selected' : ''}>${E(recDe(r).nombre || r)}</option>`).join('')}</select>` : ''}
+  <label for="fd">Día</label><input id="fd" type="date" value="${n.fecha}" min="${hoyL()}"><label>Hora</label><div id="hs" class="cargando">Buscando horarios…</div><div id="dat" hidden>
+  <label for="nn">Nombre y apellido</label><input id="nn" autocomplete="off" maxlength="80"><label for="nt">Teléfono</label><input id="nt" type="tel" inputmode="tel" maxlength="20">
+  ${S.ag.config.rubro === 'veterinaria' ? '<div class="row2"><div><label for="nm">Mascota</label><input id="nm" maxlength="60"></div><div><label for="ntp">Tipo</label><select id="ntp"><option>Perro</option><option>Gato</option><option>Otro</option></select></div></div>' : ''}
+  <label for="no">Comentario (opcional)</label><input id="no" maxlength="200"><div id="er"></div><button class="btn" id="g">Guardar turno</button></div>`;
+  $('#v').onclick = () => { S.nu = {}; pNuevo(); };
+  const pr = $('#pr'); if (pr) pr.onchange = () => { n.rec = pr.value; n.hora = null; pNuevo(); };
+  $('#fd').onchange = () => { n.fecha = $('#fd').value; n.hora = null; pNuevo(); };
+  const r = await api('horarios_libres', { servicio_id: n.sv, recurso_id: n.rec, desde: n.fecha, dias: 1 });
+  if (!$('#hs')) return; if (!r.ok) { $('#hs').outerHTML = err(r.error); return; }
+  const hs = (r.dias[0] && r.dias[0].recursos[n.rec]) || [];
+  if (!hs.length) { $('#hs').outerHTML = '<div class="vacio">Sin horarios libres ese día. Pruebe otro día o profesional.</div>'; return; }
+  $('#hs').outerHTML = `<div class="hs" id="hs">${hs.map(h => `<button data-h="${h}" aria-pressed="${n.hora === h}">${h}</button>`).join('')}</div>`; if (n.hora) $('#dat').hidden = false;
+  M.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { n.hora = b.dataset.h; M.querySelectorAll('[data-h]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('#dat').hidden = false; $('#nn').focus(); });
+  $('#g').onclick = async () => {
+    const d = { servicio_id: n.sv, recurso_id: n.rec, fecha: n.fecha, hora: n.hora, nombre: $('#nn').value, tel: $('#nt').value, sujeto_nombre: $('#nm') ? $('#nm').value : '', sujeto_tipo: $('#ntp') ? $('#ntp').value : '', nota: $('#no').value };
+    if (d.nombre.trim().length < 2) { $('#er').innerHTML = err('falta_nombre'); return; } if (limpiaTel(d.tel).length < 6) { $('#er').innerHTML = err('falta_telefono'); return; }
+    $('#g').disabled = true; $('#g').textContent = 'Guardando…';
+    const x = await api('crear_turno', d);
+    if (!x.ok) { $('#er').innerHTML = err(x.error); $('#g').disabled = false; $('#g').textContent = 'Guardar turno'; if (x.error === 'horario_ocupado') { n.hora = null; setTimeout(() => pNuevo(), 1500); } return; }
+    n.listo = { fecha: n.fecha, hora: n.hora }; cargarAgenda(true).then(badge); pNuevo();
+  };
+}
+
+// ── Avisos de mañana ──
+async function pAviso() {
+  M.innerHTML = '<h2>Turnos de mañana</h2><div class="cargando">Buscando…</div>';
+  const r = await api('recordatorios_manana'); if (!r.ok) { M.innerHTML = '<h2>Turnos de mañana</h2>' + err(r.error); return; }
+  S.av = r;
+  M.innerHTML = `<h2>Turnos de mañana</h2><p style="color:var(--mut);margin:0 0 10px">${E(largaF(r.fecha))}. Cada botón abre WhatsApp con el mensaje ya escrito; usted solo lo envía.</p><div class="lista">${r.turnos.length ? r.turnos.map(t => `<div class="rec"><div class="t"><b>${E(t.hora)} · ${E(t.nombre)}${t.sujeto ? ' · ' + E(t.sujeto) : ''}</b>${t.avisado ? '<span class="pill es">Avisado</span>' : ''}</div><span class="msg">${E(t.mensaje)}</span><a class="btn" style="text-align:center;text-decoration:none;display:grid;place-items:center" data-id="${E(t.id)}" href="${E(waLink(t.tel, t.mensaje))}" target="_blank" rel="noopener">${t.avisado ? 'Enviar de nuevo' : 'Enviar por WhatsApp'}</a></div>`).join('') : '<div class="vacio">No hay turnos para mañana.</div>'}</div>`;
+  M.querySelectorAll('a[data-id]').forEach(a => a.addEventListener('click', () => { api('marcar_avisado', { id: a.dataset.id }); const p = a.closest('.rec').querySelector('.t'); if (!p.querySelector('.pill')) p.insertAdjacentHTML('beforeend', '<span class="pill es">Avisado</span>'); }));
+}
+
+// ── Más: bloqueos y enlace de reserva ──
+function pMas(res) {
+  const link = new URL('reserva.html', location.href).href, recs = S.ag.recursos;
+  M.innerHTML = `<h2>Enlace de reserva</h2><p style="color:var(--mut);margin:0 0 8px">Compártalo por WhatsApp o Instagram, o imprímalo como QR.</p><div class="res" style="word-break:break-all;color:var(--gold)">${E(link)}</div><button class="btn sec" id="cp">Copiar enlace</button>
+  ${gestion() ? `<h2>Bloquear horarios</h2><p style="color:var(--mut);margin:0 0 4px">Feriados, vacaciones o licencias. Nadie podrá reservar en ese lapso.</p>${res || ''}<label for="bp">Profesional</label><select id="bp"><option value="*">Todos</option>${recs.map(r => `<option value="${E(r.id)}">${E(r.nombre)}</option>`).join('')}</select><div class="row2"><div><label for="bd">Desde</label><input id="bd" type="date" value="${hoyL()}"></div><div><label for="bh">Hasta</label><input id="bh" type="date" value="${hoyL()}"></div></div><label for="bm">Motivo</label><input id="bm" maxlength="80" placeholder="Feriado, vacaciones…"><button class="btn" id="bg">Bloquear</button>
+  <h2>Bloqueos vigentes</h2><div class="lista">${S.ag.bloqueos.filter(b => String(b.hasta).slice(0, 10) >= hoyL()).map(b => `<div class="rec"><b>${E(b.motivo || 'Bloqueo')}</b><span class="msg">${E(b.recurso_id === '*' ? 'Todos' : recDe(b.recurso_id).nombre || b.recurso_id)} · ${E(String(b.desde).slice(0, 10))} a ${E(String(b.hasta).slice(0, 10))}</span></div>`).join('') || '<div class="vacio">No hay bloqueos cargados.</div>'}</div>` : ''}`;
+  $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(link); $('#cp').textContent = '¡Copiado!'; } catch (e) { $('#cp').textContent = 'Seleccione y copie el enlace'; } };
+  const bg = $('#bg'); if (bg) bg.onclick = async () => { if ($('#bh').value < $('#bd').value) return pMas('<div class="err">La fecha final es anterior a la inicial.</div>'); bg.disabled = true; bg.textContent = 'Guardando…'; const r = await api('guardar_bloqueo', { recurso_id: $('#bp').value, desde: $('#bd').value + ' 00:00', hasta: $('#bh').value + ' 23:59', motivo: $('#bm').value }); if (!r.ok) return pMas(err(r.error)); await cargarAgenda(true); pMas('<div class="ok"><b>Listo.</b> Horarios bloqueados.</div>'); };
+}
+pintar();
+</script></body></html>

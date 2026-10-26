@@ -25,7 +25,9 @@ const ICONOS = {
   cuit: '<path d="M4 6h16v12H4zM8 10h4M8 14h8"/>',
   iva: '<path d="M5 19L19 5M7 8a1.5 1.5 0 100-.01M17 18a1.5 1.5 0 100-.01"/>',
   hoja: '<path d="M6 3h9l4 4v14H6zM9 12h7M9 16h7"/>',
-  pdf: '<path d="M6 3h9l4 4v14H6zM12 11v6M9 14h6"/>'
+  pdf: '<path d="M6 3h9l4 4v14H6zM12 11v6M9 14h6"/>',
+  turnos: '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h3M13 14h3M8 17h3"/>',
+  reserva: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>'
 };
 const icono = (k) => `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS[k]}</svg>`;
 
@@ -55,6 +57,14 @@ const GRUPOS = [
     { k: 'pdf', t: 'Unificador de archivos en PDF', d: 'Fotos, PDF, Word y Excel en un solo PDF.', roles: ['senior', 'midsenior', 'asistente'], go: () => irHerramienta('tool-pdf') }
   ]}
 ];
+// Módulos opcionales (se activan por rubro en modulos.js). Turnos: agenda para veterinarias, consultorios, gimnasios.
+const MODULOS = window.DOMINO_MODULOS || {};
+if (MODULOS.turnos) {
+  GRUPOS.push({ titulo: 'Agenda y turnos', items: [
+    { k: 'turnos', t: 'Agenda de turnos', d: 'Turnos del día, solicitudes por confirmar y avisos de mañana.', roles: ['senior', 'midsenior', 'asistente'], go: () => window.open('turnos/panel.html', '_blank', 'noopener') },
+    { k: 'reserva', t: 'Página de reserva', d: 'La página donde sus clientes piden turno. Compártala por WhatsApp o redes.', roles: ['senior', 'midsenior', 'asistente'], go: () => window.open('turnos/reserva.html', '_blank', 'noopener') }
+  ]});
+}
 const ACCIONES = [];
 
 function irHerramienta(id) {
