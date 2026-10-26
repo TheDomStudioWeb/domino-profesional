@@ -33,6 +33,7 @@ Estados del turno: Por confirmar → Confirmado → En sala («Llegó») → Ate
 - En el detalle de cada turno hay un botón **«Vincular con la ficha»**: busca en DOMino Profesional las fichas con el mismo teléfono o un nombre parecido. Se elige «Es esta persona» o «Crear una ficha nueva con estos datos».
 - Al vincular, los otros turnos del mismo teléfono que no tenían ficha quedan vinculados también, y la mascota se suma a la ficha del dueño si no estaba.
 - **«Historial del cliente»** muestra todos los turnos de esa persona: cuántos fueron, cuántos atendidos y cuántas veces no vino.
+- En la agenda, tocar la fecha del día abre el calendario para saltar directo a cualquier día (las flechas siguen sirviendo para ir de a uno).
 - En la lista de clientes del Hub, cada tarjeta tiene un botón **«Turnos»** que abre ese historial (cuando el módulo de turnos está activado).
 - Para vincular hay que haber ingresado antes al Hub de DOMino Profesional con el usuario del estudio (la agenda de turnos tiene su propio ingreso, aparte). Si no, el panel avisa «Falta ingresar al Hub».
 - Si el turno está a nombre de **otra persona** (esposa, hijo, vecino…), antes de vincular el panel pide aclarar la **relación** con el responsable. La ficha muestra al **Responsable** (el nombre con que se creó) y, aparte, **Familiares y otros** con su relación; se pueden quitar con la ×.

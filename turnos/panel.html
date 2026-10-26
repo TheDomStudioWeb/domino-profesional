@@ -14,6 +14,7 @@ header h1{font:700 18px Cinzel,serif;color:var(--gold);margin:0;letter-spacing:.
 .dnav{display:flex;align-items:center;gap:8px;margin:14px 0 8px}
 .dnav button{background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:4px;min-width:48px;min-height:48px;font:700 20px Montserrat;cursor:pointer}
 .dnav .fecha{flex:1;text-align:center;font:600 17px Cinzel,serif}.dnav .fecha::first-letter{text-transform:uppercase}
+.dnav .fecha{position:relative;cursor:pointer;border:1px dashed var(--line);border-radius:4px;min-height:48px;display:grid;place-items:center;padding:0 8px}.dnav .fecha small{display:block;font:500 11px Montserrat;color:var(--mut);letter-spacing:.04em}.dnav .fecha input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0}
 .dnav .hoy{font:600 13px Montserrat;padding:0 12px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 10px}
 .chip{flex:0 0 auto;background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:99px;padding:0 14px;min-height:42px;font:600 14px Montserrat;cursor:pointer;display:flex;align-items:center;gap:8px}
@@ -136,12 +137,14 @@ function pAgenda() {
   const act = del.filter(t => ACTIVOS.includes(t.estado)), fin = del.filter(t => !ACTIVOS.includes(t.estado));
   const pc = pend(), proximo = pc.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora))[0];
   const tarj = t => { const c = recDe(t.recurso_id).color || '#D4AF37'; return `<button class="tn" data-id="${E(t.id)}" style="--c:${E(c)}"><div class="h">${E(t.hora)}<small>${E(addMin(t.hora, +t.duracion_min))}</small></div><div><b>${E(t.contacto_nombre)}${t.sujeto_nombre ? ' · ' + E(t.sujeto_nombre) : ''}</b><span class="s">${E(t.servicio || svDe(t.servicio_id).nombre || '')} · ${E(recDe(t.recurso_id).nombre || '')}</span><span class="pill ${CLS[t.estado] || ''}">${E(t.estado)}</span></div></button>`; };
-  M.innerHTML = `<div class="dnav"><button id="ant" aria-label="Día anterior">‹</button><div class="fecha">${E(largaF(S.fecha))}</div><button id="sig" aria-label="Día siguiente">›</button></div>
+  M.innerHTML = `<div class="dnav"><button id="ant" aria-label="Día anterior">‹</button><label class="fecha"><span>${E(largaF(S.fecha))}<small>Toque para elegir otro día</small></span><input type="date" id="fsel" value="${E(S.fecha)}" aria-label="Elegir fecha de la agenda"></label><button id="sig" aria-label="Día siguiente">›</button></div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">${S.fecha !== hoyL() ? '<button class="lnk" id="hoy">Ir a hoy</button>' : '<span></span>'}<button class="act" id="act">↻ Actualizar</button></div>
   ${recs.length > 1 ? `<div class="chips" role="group" aria-label="Profesional"><button class="chip" data-r="" aria-pressed="${!S.rec}">Todos</button>${recs.map(r => `<button class="chip" data-r="${E(r.id)}" aria-pressed="${S.rec === String(r.id)}"><i style="background:${E(r.color || '#D4AF37')}"></i>${E(r.nombre)}</button>`).join('')}</div>` : ''}
   ${pc.length ? `<div class="alerta"><span><b>${pc.length}</b> solicitud${pc.length > 1 ? 'es' : ''} por confirmar${proximo ? ' · la próxima: ' + E(corta(proximo.fecha)) + ' ' + E(proximo.hora) : ''}</span>${proximo && proximo.fecha !== S.fecha ? '<button id="irpc">Ver</button>' : ''}</div>` : ''}
   <div class="lista">${act.length ? act.map(tarj).join('') : '<div class="vacio">No hay turnos activos este día.</div>'}</div>
   ${fin.length ? `<h2>Cerrados</h2><div class="lista">${fin.map(tarj).join('')}</div>` : ''}`;
+  const fs = $('#fsel'); fs.addEventListener('click', () => { try { fs.showPicker && fs.showPicker(); } catch (e) {} });
+  fs.addEventListener('change', () => { if (/^\d{4}-\d{2}-\d{2}$/.test(fs.value) && +fs.value.slice(0, 4) > 2000 && +fs.value.slice(0, 4) < 2100) { S.fecha = fs.value; pintar(); } });
   $('#ant').onclick = () => { S.fecha = sumDias(S.fecha, -1); pintar(); }; $('#sig').onclick = () => { S.fecha = sumDias(S.fecha, 1); pintar(); };
   $('#act').onclick = async () => { $('#act').textContent = 'Actualizando…'; await cargarAgenda(true); badge(); pAgenda(); };
   const h = $('#hoy'); if (h) h.onclick = () => { S.fecha = hoyL(); pintar(); };
