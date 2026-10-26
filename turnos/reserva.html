@@ -18,7 +18,7 @@ h2{font:600 20px Cinzel,serif;margin:0 0 12px}
 .dia{flex:0 0 74px;scroll-snap-align:start;background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:10px 4px;text-align:center;font:inherit;cursor:pointer;min-height:68px}
 .dia b{display:block;font-size:20px}.dia span{font-size:13px;color:var(--mut);text-transform:uppercase}.dia[aria-pressed=true]{border-color:var(--gold);background:var(--pn2);outline:1px solid var(--gold)}
 .hs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 14px}.h{background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:14px 0;font:600 17px Montserrat;cursor:pointer;min-height:50px}.h[aria-pressed=true]{background:var(--gold);color:#0A0A0A;border-color:var(--gold)}
-.prof{margin:14px 0 6px;color:var(--mut);font-size:14px;text-transform:uppercase;letter-spacing:.08em}
+.prof{margin:16px 0 8px;background:var(--pn2);color:var(--tx);border-left:6px solid var(--c,var(--gold));border-radius:3px;padding:10px 14px;font:700 17px Montserrat;display:flex;align-items:center;gap:10px}.prof i{width:14px;height:14px;border-radius:50%;background:var(--c,var(--gold));flex:0 0 14px}
 label{display:block;margin:14px 0 6px;font-weight:600;font-size:15px}
 input,select,textarea{width:100%;background:var(--pn);color:var(--tx);border:1px solid var(--line);border-radius:4px;padding:14px;font:inherit;min-height:52px}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);border-color:var(--gold)}
@@ -88,7 +88,7 @@ async function pHorario() {
   M.innerHTML = `<button class="volver" id="v">‹ Volver</button><h2>${E(S.serv.nombre)}</h2><p style="margin:0 0 8px;color:var(--mut)">Elija el día</p>
   <div class="dias" role="group">${S.dias.map(d => `<button class="dia" data-f="${d.fecha}" aria-pressed="${d.fecha === S.fecha}"><span>${DS[dow(d.fecha)]}</span><b>${dd(d.fecha)}</b><span>${['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][+d.fecha.slice(5, 7) - 1]}</span></button>`).join('')}</div>
   <p style="margin:6px 0 0;color:var(--mut)">Elija la hora</p>
-  ${Object.entries(dia.recursos).map(([r, hs]) => `<div class="prof">${E(nom(r))}</div><div class="hs">${hs.map(h => `<button class="h" data-r="${E(r)}" data-h="${h}" aria-pressed="${S.rec === r && S.hora === h}">${h}</button>`).join('')}</div>`).join('')}
+  ${Object.entries(dia.recursos).map(([r, hs]) => `<div class="prof" style="--c:${E(((S.cfg.recursos.find(x => x.id === r) || {}).color) || '#D4AF37')}"><i></i>${E(nom(r))}</div><div class="hs">${hs.map(h => `<button class="h" data-r="${E(r)}" data-h="${h}" aria-pressed="${S.rec === r && S.hora === h}">${h}</button>`).join('')}</div>`).join('')}
   <button class="btn" id="sig" ${S.hora ? '' : 'disabled'}>Continuar</button>`;
   $('#v').onclick = () => history.back();
   M.querySelectorAll('.dia').forEach(b => b.onclick = () => { S.fecha = b.dataset.f; S.rec = S.hora = null; pHorario(); });

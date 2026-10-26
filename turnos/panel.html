@@ -44,6 +44,13 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--pn);b
 nav.tabs button{background:none;border:0;color:var(--mut);min-height:var(--bar);font:600 12.5px Montserrat;cursor:pointer;display:grid;place-items:center;gap:2px;padding:6px 2px;position:relative}
 nav.tabs button svg{width:24px;height:24px}nav.tabs button[aria-current=page]{color:var(--gold)}
 nav.tabs .n{position:absolute;top:6px;right:calc(50% - 26px);background:var(--warn);color:#0A0A0A;border-radius:99px;font:700 11px Montserrat;min-width:19px;height:19px;display:grid;place-items:center;padding:0 5px}
+.profs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.pro{display:flex;align-items:center;gap:10px;background:var(--pn2);color:var(--tx);border:2px solid var(--line);border-left:6px solid var(--c);border-radius:4px;padding:12px 14px;min-height:56px;font:700 16px Montserrat;cursor:pointer;text-align:left}
+.pro i{width:14px;height:14px;border-radius:50%;background:var(--c);flex:0 0 14px}.pro[aria-pressed=true]{border-color:var(--c);background:var(--pn);box-shadow:0 0 0 2px var(--c)}.pro.solo{cursor:default;margin-top:6px}
+.fila{display:flex;gap:8px}.fila input{flex:1;min-width:0}.rapido{flex:0 0 auto;background:var(--pn);color:var(--gold);border:1px solid var(--gold);border-radius:4px;padding:0 14px;min-height:52px;font:600 14px Montserrat;cursor:pointer}
+.volv{background:var(--gold);color:#0A0A0A;border:0;border-radius:4px;padding:0 16px;min-height:44px;font:700 14px Montserrat;text-decoration:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.salir{background:none;border:1px solid var(--line);color:var(--mut);border-radius:4px;min-height:44px;padding:0 12px;font:500 13px Montserrat;cursor:pointer}
+.act{background:none;border:1px solid var(--line);color:var(--mut);border-radius:4px;min-height:40px;padding:0 12px;font:500 13px Montserrat;cursor:pointer}
 .volver{background:none;border:0;color:var(--gold);font:600 16px Montserrat;padding:10px 0;cursor:pointer;min-height:44px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .rec{background:var(--pn);border:1px solid var(--line);border-radius:4px;padding:12px 14px;display:grid;gap:8px}
@@ -53,7 +60,7 @@ footer{text-align:center;color:var(--mut);font-size:12.5px;padding:22px 0 0;marg
 .hp{position:absolute;left:-9999px}
 @media(min-width:520px){.hs{grid-template-columns:repeat(5,1fr)}}
 </style></head><body><div class="w">
-<header><div><h1 id="neg">Agenda de turnos</h1><small id="who"></small></div><button class="lnk" id="salir" hidden>Salir</button></header>
+<header><div style="min-width:0"><h1 id="neg">Agenda de turnos</h1><small id="who"></small></div><div style="display:flex;gap:8px;align-items:center;flex:0 0 auto"><a class="volv" href="../index.html" id="vhub">‹ Volver</a><button class="salir" id="salir" hidden>Salir</button></div></header>
 <main id="m" aria-live="polite"><div class="cargando">Cargando…</div></main>
 <footer>Desarrollado por The DOM Studio Web · WhatsApp 261-3431216 · thedomstudioweb@gmail.com</footer>
 </div>
@@ -129,12 +136,13 @@ function pAgenda() {
   const pc = pend(), proximo = pc.sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora))[0];
   const tarj = t => { const c = recDe(t.recurso_id).color || '#D4AF37'; return `<button class="tn" data-id="${E(t.id)}" style="--c:${E(c)}"><div class="h">${E(t.hora)}<small>${E(addMin(t.hora, +t.duracion_min))}</small></div><div><b>${E(t.contacto_nombre)}${t.sujeto_nombre ? ' · ' + E(t.sujeto_nombre) : ''}</b><span class="s">${E(t.servicio || svDe(t.servicio_id).nombre || '')} · ${E(recDe(t.recurso_id).nombre || '')}</span><span class="pill ${CLS[t.estado] || ''}">${E(t.estado)}</span></div></button>`; };
   M.innerHTML = `<div class="dnav"><button id="ant" aria-label="Día anterior">‹</button><div class="fecha">${E(largaF(S.fecha))}</div><button id="sig" aria-label="Día siguiente">›</button></div>
-  ${S.fecha !== hoyL() ? '<div style="text-align:center;margin-bottom:6px"><button class="lnk" id="hoy">Volver a hoy</button></div>' : ''}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">${S.fecha !== hoyL() ? '<button class="lnk" id="hoy">Ir a hoy</button>' : '<span></span>'}<button class="act" id="act">↻ Actualizar</button></div>
   ${recs.length > 1 ? `<div class="chips" role="group" aria-label="Profesional"><button class="chip" data-r="" aria-pressed="${!S.rec}">Todos</button>${recs.map(r => `<button class="chip" data-r="${E(r.id)}" aria-pressed="${S.rec === String(r.id)}"><i style="background:${E(r.color || '#D4AF37')}"></i>${E(r.nombre)}</button>`).join('')}</div>` : ''}
   ${pc.length ? `<div class="alerta"><span><b>${pc.length}</b> solicitud${pc.length > 1 ? 'es' : ''} por confirmar${proximo ? ' · la próxima: ' + E(corta(proximo.fecha)) + ' ' + E(proximo.hora) : ''}</span>${proximo && proximo.fecha !== S.fecha ? '<button id="irpc">Ver</button>' : ''}</div>` : ''}
   <div class="lista">${act.length ? act.map(tarj).join('') : '<div class="vacio">No hay turnos activos este día.</div>'}</div>
   ${fin.length ? `<h2>Cerrados</h2><div class="lista">${fin.map(tarj).join('')}</div>` : ''}`;
   $('#ant').onclick = () => { S.fecha = sumDias(S.fecha, -1); pintar(); }; $('#sig').onclick = () => { S.fecha = sumDias(S.fecha, 1); pintar(); };
+  $('#act').onclick = async () => { $('#act').textContent = 'Actualizando…'; await cargarAgenda(true); badge(); pAgenda(); };
   const h = $('#hoy'); if (h) h.onclick = () => { S.fecha = hoyL(); pintar(); };
   const ip = $('#irpc'); if (ip) ip.onclick = () => { S.fecha = proximo.fecha; pintar(); };
   M.querySelectorAll('.chip').forEach(b => b.onclick = () => { S.rec = b.dataset.r; pAgenda(); });
@@ -160,51 +168,68 @@ function pDetalle(aviso) {
   const rep = $('#rep'); if (rep) rep.onclick = () => repro(t);
 }
 async function repro(t) {
-  const z0 = $('#zona'); let fecha = t.fecha >= hoyL() ? t.fecha : hoyL(), hora = null;
-  const dibujar = async () => {
-    z0.innerHTML = `<h2>Nuevo horario</h2><label for="rf">Día</label><input id="rf" type="date" value="${fecha}" min="${hoyL()}"><div id="hs" class="cargando">Buscando horarios…</div>`;
-    $('#rf').onchange = () => { fecha = $('#rf').value; hora = null; dibujar(); };
-    const r = await api('horarios_libres', { servicio_id: t.servicio_id, recurso_id: t.recurso_id, desde: fecha, dias: 1 });
-    if (!r.ok) { $('#hs').outerHTML = err(r.error); return; }
+  const z0 = $('#zona'); let fecha = t.fecha >= hoyL() ? t.fecha : hoyL(), hora = null, tk = 0, tm = null;
+  z0.innerHTML = `<h2>Nuevo horario</h2><label for="rf">Día</label><input id="rf" type="date" value="${fecha}" min="${hoyL()}"><div id="hs" class="cargando">Buscando horarios…</div><div id="ac"></div>`;
+  const cargar = async () => {
+    const mi = ++tk, h = $('#hs'); h.className = 'cargando'; h.textContent = 'Buscando horarios…'; $('#ac').innerHTML = ''; hora = null;
+    const r = await api('horarios_libres', { servicio_id: t.servicio_id, recurso_id: t.recurso_id, desde: fecha, dias: 1 }); if (mi !== tk) return;
+    if (!r.ok) { h.outerHTML = `<div id="hs">${err(r.error)}</div>`; return; }
     const hs = (r.dias[0] && r.dias[0].recursos[t.recurso_id]) || [];
-    $('#hs').outerHTML = hs.length ? `<div class="hs" id="hs">${hs.map(h => `<button data-h="${h}" aria-pressed="false">${h}</button>`).join('')}</div><button class="btn" id="ok" disabled>Mover turno</button><button class="btn sec" id="no">Dejarlo como está</button>` : '<div class="vacio" id="hs">Sin horarios libres ese día. Pruebe otro.</div>';
+    $('#hs').className = hs.length ? 'hs' : 'vacio';
+    $('#hs').innerHTML = hs.length ? hs.map(x => `<button data-h="${x}" aria-pressed="false">${x}</button>`).join('') : 'Sin horarios libres ese día. Pruebe otro.';
+    if (!hs.length) return;
+    $('#ac').innerHTML = '<button class="btn" id="ok" disabled>Mover turno</button><button class="btn sec" id="no">Dejarlo como está</button>';
     z0.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { hora = b.dataset.h; z0.querySelectorAll('[data-h]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('#ok').disabled = false; });
-    const no = $('#no'); if (no) no.onclick = () => pDetalle();
-    const ok = $('#ok'); if (ok) ok.onclick = async () => { ok.disabled = true; ok.textContent = 'Moviendo…'; const x = await api('reprogramar', { id: t.id, fecha, hora }); if (!x.ok) return pDetalle(err(x.error)); await cargarAgenda(true); S.fecha = fecha; S.det = { id: x.id }; badge(); pDetalle('<div class="ok"><b>Turno movido</b> a ' + E(corta(fecha)) + ' ' + E(hora) + '.</div>'); };
+    $('#no').onclick = () => pDetalle();
+    $('#ok').onclick = async () => { const ok = $('#ok'); ok.disabled = true; ok.textContent = 'Moviendo…'; const x = await api('reprogramar', { id: t.id, fecha, hora }); if (!x.ok) return pDetalle(err(x.error)); await cargarAgenda(true); S.fecha = fecha; S.det = { id: x.id }; badge(); pDetalle('<div class="ok"><b>Turno movido</b> a ' + E(corta(fecha)) + ' ' + E(hora) + '.</div>'); };
   };
-  dibujar(); z0.scrollIntoView({ block: 'start' });
+  fechaCampo($('#rf'), v => { fecha = v; cargar(); }); cargar(); z0.scrollIntoView({ block: 'start' });
+}
+// Campo de fecha estable: abre el calendario al tocarlo y busca recién cuando la fecha quedó completa (sin redibujar el campo).
+function fechaCampo(inp, cb) {
+  let tm = null;
+  inp.addEventListener('click', () => { try { inp.showPicker && inp.showPicker(); } catch (e) {} });
+  const disparar = () => { clearTimeout(tm); tm = setTimeout(() => { const v = inp.value; if (/^\d{4}-\d{2}-\d{2}$/.test(v) && v >= hoyL() && +v.slice(0, 4) < 2100) cb(v); }, 700); };
+  inp.addEventListener('input', disparar); inp.addEventListener('change', disparar);
 }
 
 // ── Nuevo turno ──
-async function pNuevo() {
+let nuTk = 0;
+function pNuevo() {
   const n = S.nu, svs = S.ag.servicios.filter(s => String(s.activo).toLowerCase() !== 'no');
   if (n.listo) { M.innerHTML = `<div class="ok"><b>Turno guardado.</b> ${E(corta(n.listo.fecha))} a las ${E(n.listo.hora)}.</div><button class="btn" id="otro">Cargar otro turno</button><button class="btn sec" id="ver">Ver en la agenda</button>`; $('#otro').onclick = () => { S.nu = {}; pNuevo(); }; $('#ver').onclick = () => { S.fecha = n.listo.fecha; S.rec = ''; S.nu = {}; S.tab = 'agenda'; pintar(); }; return; }
   if (!n.sv) { M.innerHTML = `<h2>Nuevo turno</h2><p style="color:var(--mut);margin:0 0 10px">¿Qué servicio?</p><div class="lista">${svs.map(s => `<button class="tn" data-s="${E(s.id)}" style="grid-template-columns:1fr"><div><b>${E(s.nombre)}</b><span class="s">${s.duracion_min} min</span></div></button>`).join('')}</div>`; M.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { n.sv = b.dataset.s; n.fecha = hoyL(); n.hora = null; n.rec = null; pNuevo(); }); return; }
   const sv = svDe(n.sv), recs = String(sv.recursos).split(',').map(x => x.trim()).filter(Boolean);
   if (!n.rec) n.rec = recs[0];
   M.innerHTML = `<button class="volver" id="v">‹ Cambiar servicio</button><h2>${E(sv.nombre)}</h2>
-  ${recs.length > 1 ? `<label for="pr">Profesional</label><select id="pr">${recs.map(r => `<option value="${E(r)}" ${r === n.rec ? 'selected' : ''}>${E(recDe(r).nombre || r)}</option>`).join('')}</select>` : ''}
-  <label for="fd">Día</label><input id="fd" type="date" value="${n.fecha}" min="${hoyL()}"><label>Hora</label><div id="hs" class="cargando">Buscando horarios…</div><div id="dat" hidden>
+  ${recs.length > 1 ? `<label>Profesional</label><div class="profs" role="group" aria-label="Profesional">${recs.map(r => `<button class="pro" data-r="${E(r)}" style="--c:${E(recDe(r).color || '#D4AF37')}" aria-pressed="${r === n.rec}"><i></i>${E(recDe(r).nombre || r)}</button>`).join('')}</div>` : `<div class="pro solo" style="--c:${E(recDe(n.rec).color || '#D4AF37')}"><i></i>${E(recDe(n.rec).nombre || '')}</div>`}
+  <label for="fd">Día</label><div class="fila"><input id="fd" type="date" value="${n.fecha}" min="${hoyL()}"><button class="rapido" data-d="0">Hoy</button><button class="rapido" data-d="1">Mañana</button></div>
+  <label>Hora</label><div id="hs" class="cargando">Buscando horarios…</div><div id="dat" hidden>
   <label for="nn">Nombre y apellido</label><input id="nn" autocomplete="off" maxlength="80"><label for="nt">Teléfono</label><input id="nt" type="tel" inputmode="tel" maxlength="20">
   ${S.ag.config.rubro === 'veterinaria' ? '<div class="row2"><div><label for="nm">Mascota</label><input id="nm" maxlength="60"></div><div><label for="ntp">Tipo</label><select id="ntp"><option>Perro</option><option>Gato</option><option>Otro</option></select></div></div>' : ''}
   <label for="no">Comentario (opcional)</label><input id="no" maxlength="200"><div id="er"></div><button class="btn" id="g">Guardar turno</button></div>`;
   $('#v').onclick = () => { S.nu = {}; pNuevo(); };
-  const pr = $('#pr'); if (pr) pr.onchange = () => { n.rec = pr.value; n.hora = null; pNuevo(); };
-  $('#fd').onchange = () => { n.fecha = $('#fd').value; n.hora = null; pNuevo(); };
-  const r = await api('horarios_libres', { servicio_id: n.sv, recurso_id: n.rec, desde: n.fecha, dias: 1 });
-  if (!$('#hs')) return; if (!r.ok) { $('#hs').outerHTML = err(r.error); return; }
-  const hs = (r.dias[0] && r.dias[0].recursos[n.rec]) || [];
-  if (!hs.length) { $('#hs').outerHTML = '<div class="vacio">Sin horarios libres ese día. Pruebe otro día o profesional.</div>'; return; }
-  $('#hs').outerHTML = `<div class="hs" id="hs">${hs.map(h => `<button data-h="${h}" aria-pressed="${n.hora === h}">${h}</button>`).join('')}</div>`; if (n.hora) $('#dat').hidden = false;
-  M.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { n.hora = b.dataset.h; M.querySelectorAll('[data-h]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('#dat').hidden = false; $('#nn').focus(); });
+  const horas = async () => {
+    const mi = ++nuTk; n.hora = null; $('#dat').hidden = true; const h = $('#hs'); h.className = 'cargando'; h.textContent = 'Buscando horarios…';
+    const r = await api('horarios_libres', { servicio_id: n.sv, recurso_id: n.rec, desde: n.fecha, dias: 1 }); if (mi !== nuTk || !$('#hs')) return;
+    if (!r.ok) { $('#hs').className = ''; $('#hs').innerHTML = err(r.error); return; }
+    const hs = (r.dias[0] && r.dias[0].recursos[n.rec]) || [];
+    $('#hs').className = hs.length ? 'hs' : 'vacio'; $('#hs').innerHTML = hs.length ? hs.map(x => `<button data-h="${x}" aria-pressed="false">${x}</button>`).join('') : 'Sin horarios libres ese día. Pruebe otro día o profesional.';
+    M.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { n.hora = b.dataset.h; M.querySelectorAll('[data-h]').forEach(x => x.setAttribute('aria-pressed', x === b)); $('#dat').hidden = false; $('#nn').focus({ preventScroll: false }); });
+  };
+  M.querySelectorAll('.pro[data-r]').forEach(b => b.onclick = () => { n.rec = b.dataset.r; M.querySelectorAll('.pro[data-r]').forEach(x => x.setAttribute('aria-pressed', x === b)); horas(); });
+  fechaCampo($('#fd'), v => { n.fecha = v; horas(); });
+  M.querySelectorAll('.rapido').forEach(b => b.onclick = () => { n.fecha = sumDias(hoyL(), +b.dataset.d); $('#fd').value = n.fecha; horas(); });
   $('#g').onclick = async () => {
     const d = { servicio_id: n.sv, recurso_id: n.rec, fecha: n.fecha, hora: n.hora, nombre: $('#nn').value, tel: $('#nt').value, sujeto_nombre: $('#nm') ? $('#nm').value : '', sujeto_tipo: $('#ntp') ? $('#ntp').value : '', nota: $('#no').value };
+    if (!n.hora) { $('#er').innerHTML = '<div class="err"><b>Falta la hora.</b> Elija un horario.</div>'; return; }
     if (d.nombre.trim().length < 2) { $('#er').innerHTML = err('falta_nombre'); return; } if (limpiaTel(d.tel).length < 6) { $('#er').innerHTML = err('falta_telefono'); return; }
     $('#g').disabled = true; $('#g').textContent = 'Guardando…';
     const x = await api('crear_turno', d);
-    if (!x.ok) { $('#er').innerHTML = err(x.error); $('#g').disabled = false; $('#g').textContent = 'Guardar turno'; if (x.error === 'horario_ocupado') { n.hora = null; setTimeout(() => pNuevo(), 1500); } return; }
+    if (!x.ok) { $('#er').innerHTML = err(x.error); $('#g').disabled = false; $('#g').textContent = 'Guardar turno'; if (x.error === 'horario_ocupado') horas(); return; }
     n.listo = { fecha: n.fecha, hora: n.hora }; cargarAgenda(true).then(badge); pNuevo();
   };
+  horas();
 }
 
 // ── Avisos de mañana ──
@@ -225,5 +250,14 @@ function pMas(res) {
   $('#cp').onclick = async () => { try { await navigator.clipboard.writeText(link); $('#cp').textContent = '¡Copiado!'; } catch (e) { $('#cp').textContent = 'Seleccione y copie el enlace'; } };
   const bg = $('#bg'); if (bg) bg.onclick = async () => { if ($('#bh').value < $('#bd').value) return pMas('<div class="err">La fecha final es anterior a la inicial.</div>'); bg.disabled = true; bg.textContent = 'Guardando…'; const r = await api('guardar_bloqueo', { recurso_id: $('#bp').value, desde: $('#bd').value + ' 00:00', hasta: $('#bh').value + ' 23:59', motivo: $('#bm').value }); if (!r.ok) return pMas(err(r.error)); await cargarAgenda(true); pMas('<div class="ok"><b>Listo.</b> Horarios bloqueados.</div>'); };
 }
+// Actualiza sola la agenda: al volver a la pestaña y cada minuto (solo si está mirando la agenda y no está escribiendo).
+let ultimo = Date.now();
+async function refrescar() {
+  if (!S.tok || S.busy || document.hidden || S.tab !== 'agenda' || S.det) return;
+  const r = await api('agenda', { desde: S.rango[0], hasta: S.rango[1] }); if (!r.ok) return;
+  S.ag = r; ultimo = Date.now(); badge(); if (S.tab === 'agenda' && !S.det) pAgenda();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - ultimo > 15000) refrescar(); });
+setInterval(refrescar, 60000);
 pintar();
 </script></body></html>
