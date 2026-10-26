@@ -21,16 +21,26 @@ export async function conectar() {
 const dig = s => String(s || '').replace(/\D/g, '');
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
-// Fichas activas que se parecen al turno: mismo teléfono o nombre parecido.
-export async function sugeridas(nombre, tel) {
-  const { fs, db } = F, snap = await fs.getDocs(fs.query(fs.collection(db, 'clients'), fs.where('estado', '==', 'activo')));
-  const t = dig(tel).slice(-8), n = norm(nombre), out = [];
-  snap.forEach(d => {
-    const c = d.data(), nc = norm(c.nombre_empresa), tc = dig(c.telefono).slice(-8);
-    const mismoTel = t.length >= 7 && tc === t, parecido = n.length > 2 && nc && (nc.includes(n) || n.includes(nc) || n.split(' ').filter(x => x.length > 2).every(x => nc.includes(x)));
-    if (mismoTel || parecido) out.push({ id: d.id, nombre: c.nombre_empresa, telefono: c.telefono || '', mascotas: (c.mascotas || []).map(m => m.nombre).join(', '), exacto: mismoTel });
+// Todas las fichas activas (para sugerir y para buscar a mano).
+export async function todas() {
+  const { fs, db } = F, snap = await fs.getDocs(fs.query(fs.collection(db, 'clients'), fs.where('estado', '==', 'activo'))), out = [];
+  snap.forEach(d => { const c = d.data(); out.push({ id: d.id, nombre: String(c.nombre_empresa || ''), telefono: String(c.telefono || ''), mascotas: (c.mascotas || []).map(m => m.nombre).join(', ') }); });
+  return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+// Parecidas al turno: mismo teléfono (últimos 7 dígitos) o nombre parecido.
+export function parecidas(lista, nombre, tel) {
+  const t = dig(tel).slice(-7), n = norm(nombre), out = [];
+  lista.forEach(c => {
+    const nc = norm(c.nombre), tc = dig(c.telefono).slice(-7), mismoTel = t.length >= 7 && tc === t;
+    const parecido = n.length > 2 && nc && (nc.includes(n) || n.includes(nc) || n.split(' ').filter(x => x.length > 2).some(x => nc.includes(x)));
+    if (mismoTel || parecido) out.push({ ...c, exacto: mismoTel });
   });
   return out.sort((a, b) => (b.exacto - a.exacto) || a.nombre.localeCompare(b.nombre)).slice(0, 6);
+}
+// Búsqueda manual por nombre o teléfono.
+export function buscar(lista, q) {
+  const n = norm(q), d = dig(q); if (!n) return lista.slice(0, 8);
+  return lista.filter(c => norm(c.nombre).includes(n) || (d.length >= 3 && dig(c.telefono).includes(d)) || norm(c.mascotas).includes(n)).slice(0, 8);
 }
 export async function nombreDe(id) {
   try { const { fs, db } = F; const s = await fs.getDoc(fs.doc(db, 'clients', id)); return s.exists() ? (s.data().nombre_empresa || '') : ''; } catch (e) { return ''; }

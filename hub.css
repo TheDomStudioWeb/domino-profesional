@@ -188,3 +188,12 @@ input,select{border-radius:2px}
 .pdf-res b{color:var(--verde-ok)}.pdf-res small{color:var(--text-muted)}
 .mal-txt{color:var(--rojo-alerta)}
 @media (max-width:520px){.pdf-it{flex-wrap:wrap}.pdf-ac{width:100%;justify-content:flex-end}}
+
+.ficha-datos{background:var(--bg-card,#16181C);border:1px solid var(--border,#2c2f36);border-left:3px solid var(--gold,#D4AF37);border-radius:4px;padding:14px 16px;margin:0 0 16px}
+.ficha-datos h3{margin:0 0 8px;font-size:1rem}
+.ficha-fila{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--border,#2c2f36)}
+.ficha-fila>span{color:var(--text-muted,#b9b4a4);min-width:84px;font-size:.9rem}.ficha-fila b{min-width:0;overflow-wrap:anywhere;font-weight:600}.ficha-fila i{color:var(--text-muted,#b9b4a4);font-weight:400}
+.ficha-chips{display:flex;gap:8px;flex-wrap:wrap}.ficha-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--gold,#D4AF37);border-radius:99px;padding:4px 6px 4px 12px;font-size:.9rem}
+.ficha-chip button{background:none;border:0;color:var(--text-muted,#b9b4a4);font-size:1.1rem;min-width:32px;min-height:32px;cursor:pointer}
+.ficha-alta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ficha-alta input{flex:1;min-width:150px}
+.ficha-contacto{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding-bottom:10px;border-bottom:1px solid var(--border,#2c2f36)}.ficha-contacto label{display:grid;gap:4px;font-size:.85rem;color:var(--text-muted,#b9b4a4);flex:1;min-width:150px}.ficha-contacto input{min-height:44px}

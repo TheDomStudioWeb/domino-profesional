@@ -274,6 +274,7 @@ window.abrirExpediente = function(id, nombre) {
     tituloExpediente.innerText = nombre; 
     mostrarVista('expediente');
     cargarTareasDelCliente(id);
+    if (window.mostrarFichaDatos) window.mostrarFichaDatos(id);
 };
 
 // 4. Guardar una Tarea en Firestore (Atada al Cliente)
