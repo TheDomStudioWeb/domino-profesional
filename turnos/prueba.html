@@ -10,7 +10,7 @@ const cron = async f => { const t = performance.now(); const r = await f(); retu
 document.getElementById('go').onclick = async () => {
   o.textContent = 'Corriendo…'; document.getElementById('go').disabled = true;
   try {
-    let [r, ms] = await cron(() => llamar('config_publica')); L(`1. Servicio responde: ${r.ok ? 'sí' : 'NO (' + r.error + ')'} · ${ms} ms`, r.ok ? 'ok' : 'mal'); if (!r.ok) throw 0;
+    let [r, ms] = await cron(() => llamar('inicio')); L(`1. Apertura de la página (config + horarios en una llamada): ${r.ok ? 'sí' : 'NO (' + r.error + ')'} · ${ms} ms`, r.ok ? 'ok' : 'mal'); if (!r.ok) throw 0;
     const s = r.servicios[0]; const hoy = new Date(); const d0 = hoy.toISOString().slice(0, 10);
     [r, ms] = await cron(() => llamar('horarios_libres', { servicio_id: s.id, desde: d0, dias: 14 })); L(`2. Horarios libres: ${r.ok ? r.dias.length + ' días con lugar' : 'NO (' + r.error + ')'} · ${ms} ms`, r.ok ? 'ok' : 'mal'); if (!r.ok || !r.dias.length) throw 0;
     const dia = r.dias[r.dias.length - 1], rec = Object.keys(dia.recursos)[0], hora = dia.recursos[rec][dia.recursos[rec].length - 1];

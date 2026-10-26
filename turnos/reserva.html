@@ -56,9 +56,9 @@ const err = e => `<div class="err" role="alert"><b>No se pudo.</b> ${E(msg(e))}<
 
 async function iniciar() {
   const cod = new URLSearchParams(location.search).get('c');
-  const r = await llamar('config_publica');
+  const r = await llamar('inicio');
   if (!r.ok) { M.innerHTML = err(r.error) + '<button class="btn" onclick="location.reload()">Reintentar</button>'; return; }
-  S.cfg = r; $('#neg').textContent = r.negocio.nombre; document.title = 'Reservar turno · ' + r.negocio.nombre;
+  S.cfg = r; S.pre = r.horarios || {}; S.preT = Date.now(); $('#neg').textContent = r.negocio.nombre; document.title = 'Reservar turno · ' + r.negocio.nombre;
   $('#sub').textContent = r.negocio.modo_reserva === 'solicitud' ? 'Envíe su solicitud y le confirmamos el turno' : 'Reserve su turno';
   history.replaceState({ n: 0 }, '');
   if (cod) return gestionar(cod);
@@ -75,6 +75,7 @@ async function pHorario() {
   pasos(2);
   M.innerHTML = `<button class="volver" id="v">‹ Volver</button><h2>${E(S.serv.nombre)}</h2><div class="cargando">Buscando horarios…</div>`;
   $('#v').onclick = () => history.back();
+  if (!S.dias.length && S.pre[S.serv.id] && Date.now() - S.preT < 120000) S.dias = S.pre[S.serv.id];
   if (!S.dias.length) {
     const r = await llamar('horarios_libres', { servicio_id: S.serv.id, desde: hoyLocal(), dias: Math.min(S.cfg.negocio.ventana_dias, 21) });
     if (!r.ok) { M.innerHTML = `<button class="volver" id="v">‹ Volver</button>` + err(r.error); $('#v').onclick = () => history.back(); return; }
@@ -116,7 +117,7 @@ function pDatos() {
     const d = { servicio_id: S.serv.id, recurso_id: S.rec, fecha: S.fecha, hora: S.hora, nombre: $('#n').value, tel: $('#t').value, email: $('#e').value, sujeto_nombre: esVet ? $('#mas').value : '', sujeto_tipo: esVet ? $('#tp').value : '', nota: $('#o').value, web: $('#web').value, consentimiento: $('#c').checked };
     S.enviando = true; $('#go').disabled = true; $('#go').textContent = 'Enviando…';
     const r = await llamar('reservar', d); S.enviando = false;
-    if (!r.ok) { if (r.error === 'horario_ocupado' || r.error === 'fuera_de_horario') { S.dias = []; S.hora = S.rec = null; S.paso = 1; history.replaceState({ n: 1 }, ''); await pHorario(); M.insertAdjacentHTML('afterbegin', err(r.error)); return; } $('#er').innerHTML = err(r.error); $('#er').scrollIntoView({ block: 'center' }); $('#go').disabled = false; $('#go').textContent = S.cfg.negocio.modo_reserva === 'solicitud' ? 'Enviar solicitud' : 'Reservar turno'; return; }
+    if (!r.ok) { if (r.error === 'horario_ocupado' || r.error === 'fuera_de_horario') { S.dias = []; S.pre = {}; S.hora = S.rec = null; S.paso = 1; history.replaceState({ n: 1 }, ''); await pHorario(); M.insertAdjacentHTML('afterbegin', err(r.error)); return; } $('#er').innerHTML = err(r.error); $('#er').scrollIntoView({ block: 'center' }); $('#go').disabled = false; $('#go').textContent = S.cfg.negocio.modo_reserva === 'solicitud' ? 'Enviar solicitud' : 'Reservar turno'; return; }
     S.listo = r; const url = location.origin + location.pathname + '?c=' + r.codigo;
     history.replaceState({ n: 0 }, ''); pasos(0);
     M.innerHTML = `<div class="ok"><h2>${r.estado === 'Confirmado' ? '¡Turno reservado!' : '¡Solicitud enviada!'}</h2><p style="margin:0">${larga(r.fecha)} a las <b>${r.hora}</b>.${r.estado === 'Por confirmar' ? ' Le confirmaremos por teléfono o WhatsApp.' : ''}</p></div>

@@ -48,7 +48,7 @@ function falla_(codigo) { const e = new Error(codigo); e.codigo = codigo; return
 
 function despachar_(p) {
   const a = String(p.accion || '');
-  const PUB = { config_publica: configPublica_, horarios_libres: horariosLibres_, reservar: reservar_, ver_turno: verTurno_, cancelar_turno: cancelarTurno_ };
+  const PUB = { inicio: inicio_, config_publica: configPublica_, horarios_libres: horariosLibres_, reservar: reservar_, ver_turno: verTurno_, cancelar_turno: cancelarTurno_ };
   if (PUB[a]) return PUB[a](p);
   if (a === 'login') return login_(p.email, p.clave);
   const u = validarToken_(p.token);
@@ -75,6 +75,14 @@ function configPublica_() {
   return { ok: true, negocio: { nombre: c.nombre, rubro: c.rubro, telefono: c.telefono, modo_reserva: c.modo_reserva, ventana_dias: c.ventana_dias, cancelacion_limite_horas: c.cancelacion_limite_horas },
     servicios: servicios.map(s => ({ id: String(s.id), nombre: s.nombre, duracion_min: Number(s.duracion_min), recursos: lista_(s.recursos) })),
     recursos: recursos.map(r => ({ id: String(r.id), nombre: r.nombre, tipo: r.tipo, color: r.color })) };
+}
+
+// Una sola llamada para abrir la página: configuración + horarios libres de cada servicio público (evita una espera de red).
+function inicio_() {
+  const cfg = configPublica_(), c = config_(), dias = Math.min(c.ventana_dias, 14), desde = deMin_(ahoraMin_()).fecha, h = {};
+  cfg.servicios.forEach(sv => { h[sv.id] = horariosLibres_({ servicio_id: sv.id, desde: desde, dias: dias }).dias; });
+  cfg.horarios = h; cfg.generado = Date.now();
+  return cfg;
 }
 
 // ── Tiempo (todo en minutos "de pared", sin depender de la zona del servidor) ──
