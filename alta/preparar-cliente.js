@@ -25,6 +25,7 @@ function reemplazar(f, re, nuevo, obligatorio = true) {
 }
 // 1. Firebase en las cinco pantallas
 ['app.js', 'app-cliente.js', 'login.js', 'login-cliente.js'].forEach(f => F.forEach(k => reemplazar(f, new RegExp('(' + k + ':\\s*")[^"]*(")'), '$1' + d.firebase[k] + '$2')));
+reemplazar('app.js', /measurementId:\s*"[^"]*"/, 'measurementId: "' + (d.firebase.measurementId || '').replace(/[^A-Za-z0-9-]/g, '') + '"');
 F.forEach(k => reemplazar('turnos/fichas.js', new RegExp('(' + k + ':\\s*")[^"]*(")'), '$1' + d.firebase[k] + '$2'));
 // 2. Rubro
 reemplazar('modulos.js', /const RUBRO = '[a-z]+';/, "const RUBRO = '" + d.rubro + "';");
@@ -41,10 +42,10 @@ if (d.logo) {
 // 3. Servicio de turnos
 if (d.turnos_url) reemplazar('turnos/config.js', /window\.TURNOS_API = '[^']*';/, "window.TURNOS_API = '" + d.turnos_url + "';");
 // 4. Nombre en la aplicación instalable
-const mf = JSON.parse(leer('manifest.json')); mf.name = 'DOMino · ' + d.nombre; mf.short_name = d.nombre.slice(0, 12); escribir('manifest.json', JSON.stringify(mf, null, 4)); cambios++;
+const mf = JSON.parse(leer('manifest.json')); mf.name = 'DOMino · ' + d.nombre; mf.short_name = d.nombre.slice(0, 12).trim(); escribir('manifest.json', JSON.stringify(mf, null, 4)); cambios++;
 console.log('Listo: ' + cambios + ' cambios. Rubro: ' + d.rubro + '. Firebase: ' + d.firebase.projectId + (d.turnos_url ? '. Turnos: configurado.' : '. Turnos: falta turnos_url (ver la guía, paso 6).'));
 // 5. Control final: que no quede nada del proyecto de referencia
 const restos = [];
-(function rec(dir) { fs.readdirSync(dir, { withFileTypes: true }).forEach(e => { if (['.git', 'node_modules', 'libs', 'pruebas', 'alta', 'imagenes'].includes(e.name)) return; const p = path.join(dir, e.name); if (e.isDirectory()) return rec(p); if (!/\.(js|html|json)$/.test(e.name)) return; const t = fs.readFileSync(p, 'utf8'); if (d.firebase.projectId !== 'domino-profesional' && /domino-profesional\.(firebaseapp|appspot)|AIzaSyBfI_BBvq61f43ZaFYtZOYvcFZB39jsNt0/.test(t)) restos.push(path.relative(raiz, p)); }); })(raiz);
+(function rec(dir) { fs.readdirSync(dir, { withFileTypes: true }).forEach(e => { if (['.git', 'node_modules', 'libs', 'pruebas', 'alta', 'imagenes'].includes(e.name)) return; const p = path.join(dir, e.name); if (e.isDirectory()) return rec(p); if (!/\.(js|html|json)$/.test(e.name)) return; const t = fs.readFileSync(p, 'utf8'); if (d.firebase.projectId !== 'domino-profesional' && /domino-profesional\.(firebaseapp|appspot)|AIzaSyBfI_BBvq61f43ZaFYtZOYvcFZB39jsNt0|G-NPFGT0HZJP/.test(t)) restos.push(path.relative(raiz, p)); }); })(raiz);
 if (restos.length) { console.error('ATENCIÓN: todavía hay datos del proyecto de referencia en: ' + restos.join(', ')); process.exit(2); }
 console.log('Control final: no quedan datos del proyecto de referencia.');
