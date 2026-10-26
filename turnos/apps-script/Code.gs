@@ -146,10 +146,11 @@ function ocuparYGuardar_(datos, opciones) {
     if (!validaFecha_(datos.fecha) || !validaHora_(datos.hora)) throw falla_('fecha_invalida');
     const dur = Number(serv.duracion_min), ini = aMin_(datos.fecha, datos.hora);
     if (ini % c.paso_min !== 0) throw falla_('horario_invalido');
-    const libres = inicioLibres_(c, serv, datos.recurso_id, datos.fecha, mapaOcupados_(), leerHoja_(HOJAS.horarios), leerHoja_(HOJAS.bloqueos));
+    const ocup = mapaOcupados_();
+    const libres = inicioLibres_(c, serv, datos.recurso_id, datos.fecha, ocup, leerHoja_(HOJAS.horarios), leerHoja_(HOJAS.bloqueos));
     const fuerza = opciones && opciones.forzar;
-    if (!fuerza) { if (libres.indexOf(datos.hora) < 0) throw falla_(horaOcupada_(datos, dur, c) ? 'horario_ocupado' : 'fuera_de_horario'); }
-    else if (horaOcupada_(datos, dur, c)) throw falla_('horario_ocupado');
+    if (!fuerza) { if (libres.indexOf(datos.hora) < 0) throw falla_(horaOcupada_(datos, dur, c, ocup) ? 'horario_ocupado' : 'fuera_de_horario'); }
+    else if (horaOcupada_(datos, dur, c, ocup)) throw falla_('horario_ocupado');
     const id = 'T' + Utilities.getUuid().replace(/-/g, '').slice(0, 10);
     const codigo = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
     const filaSlots = [];
@@ -163,8 +164,8 @@ function ocuparYGuardar_(datos, opciones) {
     return t;
   } finally { lock.releaseLock(); }
 }
-function horaOcupada_(d, dur, c) {
-  const ocup = mapaOcupados_(), ini = aMin_(d.fecha, d.hora);
+function horaOcupada_(d, dur, c, ocup) {
+  const ini = aMin_(d.fecha, d.hora);
   for (let t = ini; t < ini + dur; t += c.paso_min) if (ocup[claveSlot_(d.recurso_id, t)]) return true;
   return false;
 }
@@ -304,11 +305,20 @@ function marcarAvisado_(p, u) {
 }
 // Disparador diario (configurarDisparador): correo automático a quien dio su correo y consintió
 function enviarRecordatorios() {
+  limpiarSlotsViejos_();
   const c = config_(), m = mananaTxt_();
   leerHoja_(HOJAS.turnos).filter(t => t.fecha === m && ESTADOS_ACTIVOS.indexOf(t.estado) > -1 && t.contacto_email && t.consentimiento === 'si' && !t.avisado).forEach(t => {
     if (MailApp.getRemainingDailyQuota() < 5) return;
     if (avisoCorreo_(t, 'recordatorio', c)) { const sh = obtenerHoja_(HOJAS.turnos), fila = buscarFila_(sh, t.id), h = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(x => String(x).trim().toLowerCase()); sh.getRange(fila, h.indexOf('avisado') + 1).setValue('correo'); }
   });
+}
+// Los tramos de días pasados ya no sirven para bloquear: se quitan para que la hoja «slots» no crezca.
+function limpiarSlotsViejos_() {
+  const lock = LockService.getScriptLock(); if (!lock.tryLock(20000)) return;
+  try {
+    const sh = obtenerHoja_(HOJAS.slots), d = sh.getDataRange().getValues(), hoy = deMin_(ahoraMin_()).fecha;
+    for (let i = d.length - 1; i >= 1; i--) { const f = String(d[i][0]).split('|')[1]; if (f && f < hoy) sh.deleteRow(i + 1); }
+  } finally { lock.releaseLock(); }
 }
 function configurarDisparador() {
   ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'enviarRecordatorios').forEach(t => ScriptApp.deleteTrigger(t));
@@ -377,7 +387,21 @@ function firma_(texto) {
 
 // ── Utilidades de hoja ───────────────────────────────────────────
 function obtenerHoja_(n) { const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(n); if (!s) throw new Error('No existe la hoja ' + n); return s; }
+// Hojas que casi no cambian: caché de 60 s (y memo dentro del pedido). turnos y slots se leen siempre frescos.
+const HOJAS_CACHE = ['config', 'recursos', 'servicios', 'horarios', 'bloqueos'];
+var MEMO_ = {};
 function leerHoja_(n) {
+  if (HOJAS_CACHE.indexOf(n) < 0) return leerHojaDirecto_(n);
+  if (MEMO_[n]) return MEMO_[n];
+  const cache = CacheService.getScriptCache(), k = 'h_' + n, g = cache.get(k);
+  if (g) { try { return MEMO_[n] = JSON.parse(g); } catch (e) {} }
+  const datos = leerHojaDirecto_(n);
+  try { const t = JSON.stringify(datos); if (t.length < 90000) cache.put(k, t, 60); } catch (e) {}
+  return MEMO_[n] = datos;
+}
+function invalidarHoja_(n) { delete MEMO_[n]; try { CacheService.getScriptCache().remove('h_' + n); } catch (e) {} }
+function limpiarCache() { HOJAS_CACHE.forEach(invalidarHoja_); } // ejecutar a mano si se editó la planilla y no se quiere esperar 60 s
+function leerHojaDirecto_(n) {
   const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(n); if (!sh) return [];
   const d = sh.getDataRange().getValues(); if (d.length <= 1) return [];
   const tz = Session.getScriptTimeZone(), h = d.shift().map(x => String(x).trim().toLowerCase());
@@ -407,5 +431,6 @@ function valorCelda_(campo, v) {
 function agregarFila_(hoja, columnas, obj) {
   const sh = obtenerHoja_(hoja), h = asegurarColumnas_(sh, columnas);
   sh.appendRow(h.map(k => valorCelda_(k, obj[k])));
+  invalidarHoja_(hoja);
 }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
