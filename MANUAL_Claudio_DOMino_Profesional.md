@@ -101,3 +101,12 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 ## Marca del negocio y pantalla de ingreso
 - La pantalla de ingreso muestra solo el logo de DOMino.
 - Dentro del Hub, el menú lateral muestra el logo y el nombre del estudio que contrata, no los de DOMino. Si todavía no se cargó el logo, se ve el de DOMino.
+
+## Primer ingreso y profesión del estudio
+- La primera vez que entra un Profesional Senior aparece el asistente **Bienvenido a DOMino Profesional**: nombre del estudio, logo (PNG o SVG, opcional), **a qué se dedica** el estudio y **cuántas personas trabajan en cada puesto** (Senior, Mid Senior y Asistentes). La cantidad es solo informativa; los nombres y las tareas de cada persona se cargan en **Equipo**. Con «Más tarde» el aviso queda en el inicio y se retoma desde ahí.
+- Profesiones: Contaduría, Escribanía, Abogacía, Arquitectura y Psicología / Psiquiatría. La profesión ajusta solas las palabras y listas:
+  - Contaduría y Escribanía y Abogacía hablan de **clientes**; Arquitectura de **comitentes**; Psicología de **pacientes** (el CUIT pasa a DNI y no se muestran CUIT ni IVA).
+  - Cada profesión tiene sus áreas de trabajo, categorías de documentos y tipos de documento enviado (por ejemplo, escrituras e inscripciones para escribanos; causas, audiencias y plazos para abogados; planos y habilitaciones para arquitectos).
+  - Las herramientas del inicio se ocultan si no aplican (la calculadora de IVA no va para escribanos, abogados, arquitectos ni psicólogos; el validador de CUIT tampoco para arquitectos ni psicólogos).
+- Se cambia cuando quiera con el botón **Datos del estudio** del inicio (solo Senior). Los datos ya cargados no se borran. El inicio muestra el nombre, la profesión, el equipo declarado y cuántas cuentas ya se crearon en Equipo.
+- No mezcla profesiones: cada estudio tiene una sola. Medicina general y veterinaria usan otras apps (DOMino Veterinaria).

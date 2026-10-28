@@ -1,4 +1,4 @@
-const CACHE_NAME = 'domino-profesional-v1'; // único por app: las tres apps comparten el mismo dominio
+const CACHE_NAME = 'domino-profesional-v2'; // único por app: las tres apps comparten el mismo dominio
 const urlsToCache = [
     './',
     'index.html',
@@ -6,6 +6,7 @@ const urlsToCache = [
     'hub.css',
     'app.js',
     'hub.js',
+    'estudio.js',
     'pdfunif.js',
     'modulos.js',
     'proximamente.js',

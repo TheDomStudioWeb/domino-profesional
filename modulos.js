@@ -11,6 +11,16 @@
   // Mientras esté en false, el Hub muestra «Próximamente» y no deja cargar documentos. Pasar a true cuando Storage esté listo y probado.
   const DOCUMENTOS = false;
 
+  // ── Palabras del vínculo con la persona atendida (cliente, comitente, paciente…) ──
+  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  const terminos = (s, p) => ({
+    clientes: cap(p), empresa: cap(s), desconocido: cap(s) + ' sin ficha', cartera_activos: cap(p) + ' activos', cartera_inactivos: cap(p) + ' inactivos', expedientes: cap(p),
+    ayuda_expediente: 'Elegí el ' + s + ' para ver sus procesos y documentos.', buscar_ayuda_buzon: 'Elegí el ' + s + ' para cargar documentos recibidos o enviarle documentación.'
+  });
+  const reemp = (s, p) => [['clientes', p], ['cliente', s]];
+  // Listas de las ventanas (áreas de trabajo, categorías de documento y tipos de documento enviado) propias de cada profesión.
+  // Cada lista es [valor, texto]; la primera opción vacía de cada selector (o «todas») se conserva.
+  const L = (...x) => x.map((v) => [v, v]);
   const PERFILES = {
     // Todo lo que tiene DOMino Profesional, sin módulos opcionales. Sirve de base para rubros nuevos.
     general: {
@@ -18,22 +28,77 @@
     },
     // Estudio contable / profesional con clientes empresas y trámites con vencimiento.
     contador: {
-      nombre: 'Contador', modulos: {}, ocultar: [], orden: [], etiquetas: {}, textos: {}
+      nombre: 'Contaduría', modulos: {}, ocultar: [], orden: [], etiquetas: {}, textos: {}
+    },
+    // Escribanía: escrituras, certificaciones e inscripciones. Sin calculadora de IVA.
+    escribano: {
+      nombre: 'Escribanía', modulos: {}, ocultar: ['iva'], orden: [], etiquetas: {},
+      textos: Object.assign(terminos('cliente', 'clientes'), { kpi_listos: 'Trámites listos' }),
+      selects: {
+        'task-responsable': L('Escrituras', 'Certificaciones', 'Inscripciones', 'Administración', 'Dirección'),
+        'doc-category': [['Escrituras', 'Escrituras y poderes'], ['Certificaciones', 'Certificaciones y firmas'], ['Inscripciones', 'Inscripciones y registros'], ['Documentacion', 'Documentación del cliente']],
+        'entrega-categoria': [['Escritura', 'Escritura'], ['Certificado', 'Certificado'], ['Informe', 'Informe de dominio'], ['Comunicacion', 'Comunicación'], ['Otro', 'Otro']],
+        'filtro-area': [['Escrituras', 'Escrituras'], ['Certificaciones', 'Certificaciones'], ['Inscripciones', 'Inscripciones'], ['Documentacion', 'Documentación']]
+      }
+    },
+    // Abogacía: causas y expedientes, plazos y honorarios. Sin calculadora de IVA.
+    abogado: {
+      nombre: 'Abogacía', modulos: {}, ocultar: ['iva'], orden: [], etiquetas: {},
+      textos: Object.assign(terminos('cliente', 'clientes'), { procesos: 'Causas y trámites', kpi_listos: 'Causas cerradas' }),
+      selects: {
+        'task-responsable': L('Causas y expedientes', 'Audiencias y plazos', 'Contratos', 'Honorarios', 'Dirección'),
+        'doc-category': [['Escritos', 'Escritos y demandas'], ['Contratos', 'Contratos y acuerdos'], ['Pruebas', 'Pruebas y documentación'], ['Cedulas', 'Cédulas y notificaciones']],
+        'entrega-categoria': [['Escrito', 'Escrito'], ['Contrato', 'Contrato'], ['Cedula', 'Cédula'], ['Comunicacion', 'Comunicación'], ['Otro', 'Otro']],
+        'filtro-area': [['Escritos', 'Escritos'], ['Contratos', 'Contratos'], ['Pruebas', 'Pruebas'], ['Cedulas', 'Cédulas']]
+      }
     },
     // Arquitectura: mismo funcionamiento que el estudio contable, pero el cliente se llama «comitente».
     // Las veterinarias usan DOMino Veterinaria y los gimnasios DOMino Bienestar (repositorios aparte).
     arquitecto: {
-      nombre: 'Arquitecto',
+      nombre: 'Arquitectura',
       modulos: {}, ocultar: ['cuit', 'iva'], orden: [], etiquetas: {},
-      textos: { clientes: 'Comitentes', empresa: 'Comitente', desconocido: 'Comitente sin ficha', cartera_activos: 'Comitentes activos', cartera_inactivos: 'Comitentes inactivos', expedientes: 'Comitentes', ayuda_expediente: 'Elegí el comitente para ver sus procesos y documentos.', buscar_ayuda_buzon: 'Elegí el comitente para cargar documentos recibidos o enviarle documentación.', kpi_listos: 'Procesos listos' },
+      textos: Object.assign(terminos('comitente', 'comitentes'), { kpi_listos: 'Procesos listos' }),
       // Cambia la palabra en toda la pantalla, también en lo que aparece después (listas, avisos, ventanas).
-      reemplazos: [['clientes', 'comitentes'], ['cliente', 'comitente']]
+      reemplazos: reemp('comitente', 'comitentes'),
+      selects: {
+        'task-responsable': L('Proyecto', 'Dirección de obra', 'Habilitaciones y planos', 'Honorarios', 'Dirección'),
+        'doc-category': [['Planos', 'Planos y proyecto'], ['Presupuestos', 'Pliegos y presupuestos'], ['Habilitaciones', 'Habilitaciones y permisos'], ['Contratos', 'Contratos de obra']],
+        'entrega-categoria': [['Plano', 'Plano'], ['Presupuesto', 'Presupuesto'], ['Certificado', 'Certificado de obra'], ['Comunicacion', 'Comunicación'], ['Otro', 'Otro']],
+        'filtro-area': [['Planos', 'Planos'], ['Presupuestos', 'Presupuestos'], ['Habilitaciones', 'Habilitaciones'], ['Contratos', 'Contratos']]
+      }
+    },
+    // Psicología y psiquiatría: la persona atendida es el «paciente». Sin datos de empresa, CUIT ni IVA.
+    psicologo: {
+      nombre: 'Psicología / Psiquiatría', modulos: {}, ocultar: ['cuit', 'iva'], orden: [], etiquetas: {},
+      textos: Object.assign(terminos('paciente', 'pacientes'), { procesos: 'Seguimiento', kpi_listos: 'Seguimientos listos' }),
+      reemplazos: reemp('paciente', 'pacientes'),
+      dom: [['#lbl-client-cuit', 'DNI / Identificador', '', ''], ['#client-cuit', '', 'Ej. 30123456', '']],
+      selects: {
+        'task-responsable': L('Admisión', 'Seguimiento de pacientes', 'Facturación a obras sociales', 'Administración', 'Dirección'),
+        'doc-category': [['Consentimientos', 'Consentimientos'], ['Informes', 'Informes'], ['Documentacion', 'Documentación del paciente'], ['Facturacion', 'Facturación y órdenes']],
+        'entrega-categoria': [['Informe', 'Informe'], ['Certificado', 'Certificado'], ['Constancia', 'Constancia de asistencia'], ['Comunicacion', 'Comunicación'], ['Otro', 'Otro']],
+        'filtro-area': [['Consentimientos', 'Consentimientos'], ['Informes', 'Informes'], ['Documentacion', 'Documentación'], ['Facturacion', 'Facturación']]
+      }
     }
   };
+  window.DOMINO_PERFILES = Object.keys(PERFILES).filter((k) => k !== 'general').map((k) => ({ id: k, nombre: PERFILES[k].nombre }));
 
+  // Qué profesión usa esta copia: ?rubro=… (vista previa) > la guardada en el navegador (viene de config/publico) > RUBRO.
   // Vista previa de otro rubro sin tocar la copia: ?rubro=arquitecto (solo cambia lo que se ve en ese navegador).
-  let elegido = RUBRO;
-  try { const q = new URLSearchParams(location.search).get('rubro'); if (q && PERFILES[q]) elegido = q; } catch (e) {}
+  const PROYECTO = 'domino-profesional';
+  let elegido = RUBRO, guardado = '', porUrl = false;
+  try { guardado = localStorage.getItem('domino_rubro') || ''; if (guardado && PERFILES[guardado]) elegido = guardado; } catch (e) {}
+  try { const q = new URLSearchParams(location.search).get('rubro'); if (q && PERFILES[q]) { elegido = q; porUrl = true; } } catch (e) {}
+  window.DOMINO_RUBRO_VISTA_PREVIA = porUrl;
+  window.DOMINO_RUBRO_FIJAR = (r) => { try { if (r && PERFILES[r]) localStorage.setItem('domino_rubro', r); } catch (e) {} };
+  // Primera vez en este navegador (por ejemplo, el portal del cliente): se consulta la ficha pública del negocio, sin iniciar sesión.
+  if (!guardado && !porUrl) {
+    fetch('https://firestore.googleapis.com/v1/projects/' + PROYECTO + '/databases/(default)/documents/config/publico').then((r) => r.ok ? r.json() : null).then((j) => {
+      const r = j && j.fields && j.fields.rubro && j.fields.rubro.stringValue;
+      try { localStorage.setItem('domino_rubro', r && PERFILES[r] ? r : RUBRO); } catch (e) {}
+      if (r && PERFILES[r] && r !== elegido) location.reload();
+    }).catch(() => { try { localStorage.setItem('domino_rubro', RUBRO); } catch (e) {} });
+  }
   const P = PERFILES[elegido];
   window.DOMINO_RUBRO = elegido;
   window.DOMINO_PERFIL = P;
@@ -80,5 +145,16 @@
     if (CLIENTE.nombre) document.querySelectorAll('.brand-name').forEach((el) => { el.innerHTML = '<b></b><small>Gestión</small>'; el.querySelector('b').textContent = CLIENTE.nombre; });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicarMarca); else aplicarMarca();
-  if (P.dom) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicarDom); else aplicarDom(); setTimeout(aplicarDom, 800); }
+  const aplicarSelects = () => {
+    Object.entries(P.selects || {}).forEach(([id, lista]) => {
+      const sel = document.getElementById(id); if (!sel) return;
+      const fijas = [...sel.options].filter((o) => o.value === '' || o.value === 'todas' || o.value === 'todos');
+      sel.innerHTML = '';
+      fijas.forEach((o) => sel.appendChild(o));
+      lista.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); });
+    });
+  };
+  const aplicarTodo = () => { aplicarDom(); aplicarSelects(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', aplicarTodo); else aplicarTodo();
+  setTimeout(aplicarTodo, 800);
 })();

@@ -37,6 +37,17 @@ service cloud.firestore {
       allow write: if esPersonal();
     }
 
+    // Datos del estudio: nombre, profesión, equipo y logo. Lo lee el personal; solo un Profesional Senior lo cambia.
+    // config/publico (nombre y profesión) se puede leer sin iniciar sesión: lo usa el portal del cliente para mostrar las palabras de la profesión.
+    match /config/publico {
+      allow get: if true;
+      allow write: if esSenior();
+    }
+    match /config/{id} {
+      allow read: if esPersonal();
+      allow write: if esSenior();
+    }
+
     match /tasks/{id} {
       allow read, write: if esPersonal();
     }
