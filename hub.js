@@ -36,7 +36,7 @@ const icono = (k) => `<svg viewBox="0 0 24 24" width="26" height="26" fill="none
 // ---------------------------------------------------------------
 const GRUPOS = [
   { titulo: 'Gestión del estudio', items: [
-    { k: 'expedientes', t: 'Clientes', d: 'Empresas, procesos y documentos. Desde acá también se da de alta o baja a un cliente.', roles: ['senior', 'midsenior'], go: () => navegarA('expedientes') },
+    { k: 'expedientes', t: 'Clientes', d: 'Fichas de clientes, procesos y documentos. Desde acá también se da de alta o baja a un cliente.', roles: ['senior', 'midsenior'], go: () => navegarA('expedientes') },
     { k: 'kanban', t: 'Tareas', d: 'Todas las tareas del estudio, por estado.', roles: ['senior', 'midsenior'], go: () => navegarA('kanban') },
     { k: 'tareas', t: 'Mis Tareas', d: 'Lo que tenés asignado, por estado.', roles: ['asistente'], go: () => navegarA('mis-tareas') }
   ]},
@@ -151,7 +151,7 @@ function renderHoy(lista, hoy) {
     const vencida = t.vencimiento < hoy;
     const eti = vencida ? 'Vencida' : t.vencimiento === hoy ? 'Hoy' : 'Próxima';
     const color = vencida ? 'border-rojo' : t.vencimiento === hoy ? 'border-ambar' : 'border-verde';
-    const empresa = cache[t.cliente_id] || T('empresa', 'Empresa');
+    const empresa = cache[t.cliente_id] || T('empresa', 'Cliente');
     const act = D().rol === 'asistente'
       ? `data-act="docs-tarea" data-id="${esc(t.id)}" data-titulo="${esc(t.titulo)}" data-cliente="${esc(t.cliente_id)}"`
       : `data-act="expediente" data-id="${esc(t.cliente_id)}" data-nombre="${esc(empresa)}"`;
@@ -215,14 +215,14 @@ function pintarEmpresas() {
     <button type="button" class="exp-card" data-act="${modo}" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">
       <b>${esc(e.nombre)}</b><small>${e.cuit ? T('id_label', 'CUIT') + ' ' + esc(e.cuit) : ''}</small>${e.masc ? `<small>Mascotas: ${esc(e.masc)}</small>` : ''}
       <span class="exp-meta"><span>${e.abiertas} ${e.abiertas === 1 ? T('proceso', 'proceso abierto') : T('procesos_n', 'procesos abiertos')}</span>${e.docs ? `<span class="exp-doc">${e.docs} ${e.docs === 1 ? 'documento por procesar' : 'documentos por procesar'}</span>` : ''}</span>
-    </button>`).join('') : '<p class="vacio">No hay empresas que coincidan.</p>';
+    </button>`).join('') : '<p class="vacio">No hay clientes que coincidan.</p>';
 }
 async function renderExpedientes() {
   const modo = D().modoExp === 'buzon' ? 'buzon' : 'expediente';
   $('titulo-expedientes').innerText = modo === 'buzon' ? (window.DOMINO_T ? window.DOMINO_T('buzon', 'Buzón documental') : 'Buzón documental') : (window.DOMINO_T ? window.DOMINO_T('expedientes', 'Expedientes') : 'Expedientes');
-  $('expedientes-ayuda').innerText = modo === 'buzon' ? T('buscar_ayuda_buzon', 'Elegí la empresa para cargar documentos recibidos o enviarle documentación.') : (window.DOMINO_T ? window.DOMINO_T('ayuda_expediente', 'Elegí la empresa para ver sus procesos y documentos.') : 'Elegí la empresa para ver sus procesos y documentos.');
+  $('expedientes-ayuda').innerText = modo === 'buzon' ? T('buscar_ayuda_buzon', 'Elegí el cliente para cargar documentos recibidos o enviarle documentación.') : (window.DOMINO_T ? window.DOMINO_T('ayuda_expediente', 'Elegí el cliente para ver sus procesos y documentos.') : 'Elegí el cliente para ver sus procesos y documentos.');
   $('lista-expedientes').innerHTML = '<p class="vacio">Cargando…</p>';
-  try { await cargarEmpresas(); pintarEmpresas(); } catch (e) { console.error(e); $('lista-expedientes').innerHTML = '<p class="vacio">No se pudieron cargar las empresas.</p>'; }
+  try { await cargarEmpresas(); pintarEmpresas(); } catch (e) { console.error(e); $('lista-expedientes').innerHTML = '<p class="vacio">No se pudieron cargar los clientes.</p>'; }
   D().modoExp = 'expediente';
 }
 $('buscar-expediente').addEventListener('input', pintarEmpresas);
@@ -274,8 +274,8 @@ function pintarDia() {
     const fin = t.estado === ESTADO_FIN;
     const act = D().rol === 'asistente'
       ? `data-act="docs-tarea" data-id="${esc(t.id)}" data-titulo="${esc(t.titulo)}" data-cliente="${esc(t.cliente_id)}"`
-      : `data-act="expediente" data-id="${esc(t.cliente_id)}" data-nombre="${esc(cache[t.cliente_id] || T('empresa', 'Empresa'))}"`;
-    return `<div class="task-item ${fin ? 'border-verde' : 'border-ambar'}"><div class="task-info"><h4>${esc(t.titulo)}</h4><p style="color:var(--text-muted);font-size:.85rem;"><strong>${esc(cache[t.cliente_id] || 'Empresa')}</strong> | ${esc(t.responsable)} | Estado: ${esc(t.estado)}</p></div><button class="btn-action" ${act}>${D().rol === 'asistente' ? 'Documentos' : T('ver_ficha', 'Ver expediente')}</button></div>`;
+      : `data-act="expediente" data-id="${esc(t.cliente_id)}" data-nombre="${esc(cache[t.cliente_id] || T('empresa', 'Cliente'))}"`;
+    return `<div class="task-item ${fin ? 'border-verde' : 'border-ambar'}"><div class="task-info"><h4>${esc(t.titulo)}</h4><p style="color:var(--text-muted);font-size:.85rem;"><strong>${esc(cache[t.cliente_id] || T('empresa', 'Cliente'))}</strong> | ${esc(t.responsable)} | Estado: ${esc(t.estado)}</p></div><button class="btn-action" ${act}>${D().rol === 'asistente' ? 'Documentos' : T('ver_ficha', 'Ver expediente')}</button></div>`;
   }).join('') : '<p class="vacio">No hay vencimientos este día.</p>';
 }
 $('cal-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; calSel = b.dataset.f; pintarCalendario(); });
@@ -470,7 +470,7 @@ function buscarEnInicio() {
         <button type="button" class="btn-primary" data-act="expediente" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Expediente</button>
         <button type="button" class="btn-secundario" data-act="buzon" data-id="${esc(e.id)}" data-nombre="${esc(e.nombre)}">Buzón</button>
       </div>
-    </div>`).join('') : '<p class="vacio">No hay empresas activas que coincidan.</p>';
+    </div>`).join('') : '<p class="vacio">No hay clientes activos que coincidan.</p>';
 }
 $('hub-q').addEventListener('input', buscarEnInicio);
 $('hub-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const b = document.querySelector('#hub-q-res [data-act="expediente"]'); if (b) b.click(); } });

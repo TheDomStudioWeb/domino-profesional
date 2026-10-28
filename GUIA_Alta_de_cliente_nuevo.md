@@ -1,6 +1,6 @@
 # Guía de alta de un cliente nuevo · DOMino Profesional + Turnos
 
-**Para qué sirve:** montar una copia limpia de DOMino para un cliente (por ejemplo, una veterinaria), con su propia base de datos, su propia agenda de turnos y su rubro. Cada cliente tiene **su propia copia**: un cliente nunca ve datos de otro.
+**Para qué sirve:** montar una copia limpia de DOMino Profesional para un estudio (contable, jurídico, escribanía, arquitectura…), con su propia base de datos, su propia agenda de turnos y su rubro. Cada cliente tiene **su propia copia**: un cliente nunca ve datos de otro.
 
 **Tiempo estimado:** 45 a 60 minutos la primera vez; menos después.
 **Costo:** cero dentro de las cuotas gratuitas de Firebase, Google y GitHub (ver «Costos y límites» al final).
@@ -12,7 +12,7 @@
 
 ## Paso 0 · Datos del cliente (5 min)
 Anotar antes de empezar:
-- Nombre del negocio (ej. «Veterinaria Pepe») y rubro (`veterinaria`, `contador` o `general`).
+- Nombre del estudio (ej. «Estudio Pérez») y rubro (`contador`, `arquitecto` o `general`). Las veterinarias se dan de alta desde DOMino Veterinaria y los gimnasios desde DOMino Bienestar.
 - Correo del dueño (será el usuario **Senior**).
 - Teléfono y correo de contacto del negocio.
 - **Logo del negocio en PNG** (idealmente con fondo transparente). Se muestra en el Hub y en el portal en lugar del de DOMino. En `alta/cliente.json` se indica en el campo `logo` (ruta al archivo). Sin logo, el Hub muestra la marca DOMino.
@@ -57,9 +57,9 @@ Anotar antes de empezar:
 ## Paso 5 · Datos del estudio (5 min)
 Con el dueño dentro del Hub:
 - **Equipo:** dar de alta a recepción y asistentes. Cada uno recibe un correo para elegir su clave.
-- **Clientes / Dueños y mascotas:** empezar **vacío**. No importar datos de ejemplo.
+- **Clientes (o comitentes):** empezar **vacío**. No importar datos de ejemplo.
 
-## Paso 6 · Turnos (veterinaria y otros rubros con agenda) (15 min)
+## Paso 6 · Turnos (solo si el estudio usa agenda) (15 min)
 1. Subir `turnos/Planilla_ejemplo_veterinaria.xlsx` a Google Drive del cliente → abrir como **Google Sheets** → renombrar `Turnos · <negocio>`.
 2. **Dejarla limpia.** Reemplazar los datos de ejemplo:
    - `config`: `nombre`, `rubro`, `telefono` del negocio. Revisar `modo_reserva` (`solicitud` = el negocio confirma cada pedido; `inmediata` = se confirma sola), `paso_min`, `anticipacion_min_horas`, `cancelacion_limite_horas` y `ventana_dias`.
@@ -80,7 +80,7 @@ Marcar uno por uno:
 - [ ] El dueño ingresa al Hub con su correo y su clave propia.
 - [ ] El Hub muestra el rubro correcto (nombres, grupos y accesos).
 - [ ] No hay clientes, usuarios ni turnos de ejemplo en ninguna parte.
-- [ ] Se creó un dueño de prueba, se cargó una mascota y su libreta sanitaria, y se borraron después.
+- [ ] Se creó un cliente de prueba con una tarea y se borraron después.
 - [ ] La página de reserva (`turnos/reserva.html`) se ve bien en el celular y toma un turno de prueba.
 - [ ] Ese turno aparece en el panel de turnos, se confirma, se vincula a una ficha y se cancela.
 - [ ] Llegó el correo de aviso (o se verificó la cuota de correo de la cuenta).
@@ -112,7 +112,7 @@ Marcar uno por uno:
 |---|---|
 | «Usuario sin perfil asignado» | Falta el documento en `users` o el ID no es el correo en minúsculas |
 | El ingreso falla en la dirección publicada | Falta agregar `<usuario>.github.io` en *Authorized domains* |
-| El Hub no muestra «Agenda y turnos» | `RUBRO` no es `veterinaria` o `turnos` no está activo en el perfil |
+| El Hub no muestra «Agenda y turnos» | `turnos` no está activo en el perfil del rubro (`modulos.js`) |
 | El panel de turnos dice «Falta ingresar al Hub» | No se ingresó antes al Hub con el usuario del estudio |
 | La reserva dice que el servicio no responde | `turnos_url` vacía, mal copiada, o falta «Nueva versión» en Apps Script |
 | Los cambios del código no se ven | La aplicación instalada guarda caché: Ctrl+F5, o cerrar y volver a abrir |

@@ -47,7 +47,7 @@ def titular(pg,out):
     ok('titular_ve_entrega', 'VEP_septiembre' in pg.inner_text('#lista-entregas'))
 def sin(pg,out):
     pg.set_default_timeout(5000); pg.wait_for_timeout(600)
-    ok('sin_empresa_mensaje','todavía no tiene una empresa' in pg.inner_text('#lista-entregas'))
+    ok('sin_empresa_mensaje','todavía no tiene una ficha de cliente' in pg.inner_text('#lista-entregas'))
 if __name__=='__main__':
     import subprocess,time
     srv=subprocess.Popen(['python3','-m','http.server','8801'],cwd='/home/claude/domino-profesional',stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); time.sleep(1)

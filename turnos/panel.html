@@ -199,7 +199,7 @@ async function vincular(t) {
   let todas = [], lista = []; try { todas = await fch.todas(); lista = fch.parecidas(todas, t.contacto_nombre, t.contacto_tel); } catch (e) { z0.innerHTML = err('sin_permiso'); return; }
   const fila = f => `<div class="rec"><div class="t"><b>${E(f.nombre)}</b>${f.exacto ? '<span class="pill es">Mismo teléfono</span>' : ''}</div><span class="msg">${E(f.telefono || 'Sin teléfono')}${f.mascotas ? ' · ' + E(f.mascotas) : ''}</span><button class="btn" data-f="${E(f.id)}" data-n="${E(f.nombre)}">Es esta persona</button></div>`;
   z0.innerHTML = `<h2>Vincular con la ficha</h2>${lista.length ? `<p style="color:var(--mut);margin:0 0 8px">Fichas que se parecen:</p><div class="lista" id="sug">${lista.map(fila).join('')}</div>` : '<div class="vacio">No hay fichas parecidas.</div>'}
-  <label for="bq">Buscar otra ficha (${todas.length} en el estudio)</label><input id="bq" placeholder="Nombre, teléfono o mascota" autocomplete="off"><div class="lista" id="bl" style="margin-top:8px"></div>
+  <label for="bq">Buscar otra ficha (${todas.length} en el estudio)</label><input id="bq" placeholder="Nombre o teléfono" autocomplete="off"><div class="lista" id="bl" style="margin-top:8px"></div>
   <button class="btn sec" id="nueva">Crear una ficha nueva con estos datos</button><div id="vz"></div>`;
   const enlazar = () => z0.querySelectorAll('[data-f]').forEach(b => b.onclick = () => elegir(b.dataset.f, b.dataset.n));
   $('#bq').oninput = () => { const q = $('#bq').value; $('#bl').innerHTML = q.trim() ? (fch.buscar(todas, q).map(fila).join('') || '<div class="vacio">Sin resultados.</div>') : ''; enlazar(); };
@@ -308,7 +308,7 @@ async function pAviso() {
   const r = await api('recordatorios_manana'); if (!r.ok) { M.innerHTML = '<h2>Turnos de mañana</h2>' + err(r.error); return; }
   S.av = r;
   M.innerHTML = `<h2>Turnos de mañana</h2><p style="color:var(--mut);margin:0 0 10px">${E(largaF(r.fecha))}. Cada botón abre WhatsApp con el mensaje ya escrito; usted solo lo envía.</p><div class="lista">${r.turnos.length ? r.turnos.map(t => `<div class="rec"><div class="t"><b>${E(t.hora)} · ${E(t.nombre)}${t.sujeto ? ' · ' + E(t.sujeto) : ''}</b>${t.avisado ? '<span class="pill es">Avisado</span>' : ''}</div><span class="msg">${E(t.mensaje)}</span><a class="btn" style="text-align:center;text-decoration:none;display:grid;place-items:center" data-id="${E(t.id)}" href="${E(waLink(t.tel, t.mensaje))}" target="_blank" rel="noopener">${t.avisado ? 'Enviar de nuevo' : 'Enviar por WhatsApp'}</a></div>`).join('') : '<div class="vacio">No hay turnos para mañana.</div>'}</div>`;
-  controles();
+  if (S.ag.config.rubro === 'veterinaria') controles();
   M.querySelectorAll('a[data-id]').forEach(a => a.addEventListener('click', () => { api('marcar_avisado', { id: a.dataset.id }); const p = a.closest('.rec').querySelector('.t'); if (!p.querySelector('.pill')) p.insertAdjacentHTML('beforeend', '<span class="pill es">Avisado</span>'); }));
 }
 

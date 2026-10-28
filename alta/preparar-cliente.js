@@ -7,7 +7,7 @@ const raiz = path.resolve(__dirname, '..');
 const arch = process.argv[2];
 if (!arch) { console.error('Falta el archivo de datos del cliente. Ejemplo: node alta/preparar-cliente.js alta/cliente.json'); process.exit(1); }
 const d = JSON.parse(fs.readFileSync(path.resolve(arch), 'utf8'));
-const RUBROS = ['general', 'contador', 'veterinaria'];
+const RUBROS = ['general', 'contador', 'arquitecto']; // veterinarias → DOMino Veterinaria; gimnasios → DOMino Bienestar
 const F = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
 const errores = [];
 if (!d.nombre || d.nombre.length < 3) errores.push('Falta "nombre" del negocio.');

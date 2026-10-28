@@ -115,7 +115,7 @@ onAuthStateChanged(auth, async (usuario) => {
     const usuarioId = usuario.email;
     await cargarEmpresasCliente(usuarioId);
     if (!ID_CLIENTE) {
-        document.getElementById('lista-entregas').innerHTML = "<p style='color: var(--text-muted);'>Su usuario todavía no tiene una empresa asignada. Comuníquese con el estudio.</p>";
+        document.getElementById('lista-entregas').innerHTML = "<p style='color: var(--text-muted);'>Su usuario todavía no tiene una ficha de cliente asignada. Comuníquese con el estudio.</p>";
         document.getElementById('form-cliente-subir').style.display = 'none';
         return;
     }

@@ -540,7 +540,7 @@ function cambiarEmpresaActiva(idEmpresa) {
 // Escuchamos el cambio en toda la aplicación
 window.addEventListener('empresaCambiada', () => {
     const id = localStorage.getItem('empresa_activa');
-    console.log("Nueva empresa seleccionada:", id);
+    console.log("Nuevo cliente seleccionado:", id);
     // Aquí iría el filtro lógico que usaremos en el futuro
 });
 
@@ -746,7 +746,7 @@ for (const docSnap of querySnapshot.docs) {
 
     const clienteRef = doc(db, "clients", documento.cliente_id);
     const clienteSnap = await getDoc(clienteRef);
-    const nombreEmpresa = clienteSnap.exists() ? clienteSnap.data().nombre_empresa : "Empresa desconocida";
+    const nombreEmpresa = clienteSnap.exists() ? clienteSnap.data().nombre_empresa : "Cliente sin ficha";
 
     listaDocs.innerHTML += `
         <div class="doc-item">
@@ -809,7 +809,7 @@ window.cargarPrioridades = async function() {
         querySnapshot.forEach((taskDoc) => {
             const tarea = taskDoc.data();
             if (tarea.estado === "Proceso Completo/Finalizado") return;
-            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
+            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Cliente sin ficha";
             
             listaPrioridades.innerHTML += `
                 <div class="task-item ${colorEstado[tarea.estado] || 'border-ambar'}">
@@ -933,7 +933,7 @@ async function cargarKanban() {
             const columna = columnas[tarea.estado];
             if (!columna || !pasaFiltro(tarea)) return;
             
-            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
+            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Cliente sin ficha";
             
             columna.innerHTML += `
                 <div class="kanban-card" data-act="expediente" data-id="${esc(tarea.cliente_id)}" data-nombre="${esc(nombreEmpresa)}" role="button" tabindex="0">
@@ -1046,7 +1046,7 @@ async function cargarMisTareas(nombreAsistente) {
             const columna = columnas[tarea.estado];
             if (!columna || !pasaFiltro(tarea)) return;
             
-            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Empresa desconocida";
+            const nombreEmpresa = cacheClientes[tarea.cliente_id] || "Cliente sin ficha";
             
             columna.innerHTML += `
     <div class="kanban-card" data-act="docs-tarea" data-id="${esc(taskDoc.id)}" data-titulo="${esc(tarea.titulo)}" data-cliente="${esc(tarea.cliente_id)}" role="button" tabindex="0">
@@ -1094,7 +1094,7 @@ async function renderAccesos() {
         snap.forEach((d) => filas.push({ id: d.id, ...d.data() }));
         filas.sort((a, b) => String(a.nombre || a.email).localeCompare(String(b.nombre || b.email)));
         let html = titular
-            ? `<div class="acc-fila acc-titular"><div><strong>${esc(titular)}</strong><span class="acc-sub">Titular de la empresa · todos los permisos</span></div></div>`
+            ? `<div class="acc-fila acc-titular"><div><strong>${esc(titular)}</strong><span class="acc-sub">Titular de la ficha · todos los permisos</span></div></div>`
             : `<p style="color: var(--text-muted);">Esta ficha no tiene titular. Cargá un correo en el campo «usuario» de la ficha.</p>`;
         html += filas.map((f) => `
             <div class="acc-fila ${f.activo === false ? 'acc-baja' : ''}" data-aid="${esc(f.id)}" data-email="${esc(f.email)}">
@@ -1141,7 +1141,7 @@ document.getElementById('lista-accesos').addEventListener('click', async (e) => 
     try {
         if (btn.dataset.ac === 'reenviar') { await window.enviarAcceso(fila.dataset.email, btn); return; }
         if (btn.dataset.ac === 'baja') {
-            if (!confirm('¿Dar de baja a esta persona? Deja de entrar al portal de esta empresa.')) return;
+            if (!confirm('¿Dar de baja a esta persona? Deja de entrar al portal de este cliente.')) return;
             await updateDoc(ref, { activo: false });
         } else if (btn.dataset.ac === 'reactivar') {
             await updateDoc(ref, { activo: true });
@@ -1161,11 +1161,11 @@ document.getElementById('form-acceso').addEventListener('submit', async (e) => {
     try {
         const fic = await getDoc(doc(db, 'clients', accesosEmpresa.id));
         if (fic.exists() && String(fic.data().usuario_id || '').toLowerCase() === email) {
-            window.DOMINO.aviso('Ese correo ya es el titular de la empresa.', 'error'); btn.disabled = false; return;
+            window.DOMINO.aviso('Ese correo ya es el titular de la ficha.', 'error'); btn.disabled = false; return;
         }
         const ref = doc(db, 'accesos_portal', idAcceso(email, accesosEmpresa.id));
         if ((await getDoc(ref)).exists()) {
-            window.DOMINO.aviso('Esa persona ya figura en la lista de esta empresa.', 'error'); btn.disabled = false; return;
+            window.DOMINO.aviso('Esa persona ya figura en la lista de este cliente.', 'error'); btn.disabled = false; return;
         }
         await setDoc(ref, {
             email, nombre, cliente_id: accesosEmpresa.id, cliente_nombre: accesosEmpresa.nombre,

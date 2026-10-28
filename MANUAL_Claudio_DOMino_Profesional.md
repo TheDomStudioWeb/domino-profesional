@@ -82,14 +82,14 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 - Los correos se guardan siempre en minúsculas.
 
 ## 5. Perfil por rubro
-- Cada copia de DOMino Profesional trabaja con **un rubro** (hoy: contador y veterinaria; también existe un perfil «general» como base para rubros nuevos). El rubro se fija en el archivo `modulos.js` (línea `RUBRO`).
-- El perfil decide **qué ve el Hub**: qué grupos y herramientas aparecen, en qué orden, cómo se llaman las cosas y qué módulos opcionales trae.
-  - **Contador:** el Hub completo (clientes, tareas, buzón documental, documentos pendientes, portal del cliente, calendario de vencimientos, validador de CUIT, calculadora de IVA, etc.). Sin turnos.
-  - **Veterinaria:** arriba la agenda de turnos y la página de reserva; «Clientes» pasa a llamarse **Dueños y mascotas** (con libreta sanitaria); las tareas se llaman **Seguimientos**; no muestra el portal del cliente, los documentos pendientes ni las herramientas fiscales (CUIT, IVA).
-- Para **ver cómo queda otro rubro** sin cambiar nada, agregar `?rubro=contador` o `?rubro=veterinaria` al final de la dirección del Hub. Solo cambia la vista de ese navegador.
+- DOMino Profesional siempre habla de **clientes**. La única excepción son los estudios de arquitectura, donde el cliente se llama **comitente**.
+- Cada copia trabaja con **un rubro**, que se fija en `modulos.js` (línea `RUBRO`): `contador` (el de esta copia), `arquitecto` o `general` (base para rubros nuevos).
+  - **Contador:** el Hub completo (clientes, tareas, buzón documental, documentos pendientes, portal del cliente, calendario de vencimientos, validador de CUIT, calculadora de IVA, etc.).
+  - **Arquitecto:** igual que el estudio contable, pero dice **comitentes** en todas las pantallas y no muestra las herramientas fiscales (CUIT, IVA).
+- Las veterinarias usan **DOMino Veterinaria** (mascotas y dueños) y los gimnasios y centros de bienestar usan **DOMino Bienestar** (socios). Son apps aparte, con su propio repositorio.
+- Para **ver cómo queda otro rubro** sin cambiar nada, agregar `?rubro=arquitecto` al final de la dirección del Hub. Solo cambia la vista de ese navegador.
 - El rubro **ordena lo que se ve, no da ni quita permisos**: los permisos los siguen controlando los roles (Senior, Mid Senior, Asistente) y las reglas de seguridad.
-- Cada cliente (estudio) tiene **su propia copia y su propia base de datos**, así que un estudio nunca ve los datos de otro.
-- Para sumar un rubro nuevo se copia el perfil «general» en `modulos.js` y se define qué se oculta, cómo se renombra y qué módulos lleva.
+- Cada estudio tiene **su propia copia y su propia base de datos**, así que un estudio nunca ve los datos de otro.
 
 ## 6. Funciones «Próximamente»
 - La **gestión de documentos** (guardar y enviar archivos: Buzón documental, documentos pendientes, portal del cliente, adjuntar certificados) todavía **no está disponible** en esta versión, porque necesita el almacenamiento en la nube (Firebase Storage).
@@ -100,5 +100,4 @@ Funcionan en el dispositivo; no guardan ni envían lo que se carga.
 
 ## Marca del negocio y pantalla de ingreso
 - La pantalla de ingreso muestra solo el logo de DOMino.
-- Dentro del Hub, el menú lateral muestra el logo y el nombre del negocio que contrata (veterinaria, estudio, etc.), no los de DOMino. Si todavía no se cargó el logo, se ve el de DOMino.
-- En la versión de veterinaria, los textos hablan de dueños y mascotas, seguimientos y equipo de la veterinaria; los niveles se llaman Dirección, Veterinario/a y Recepción (por dentro siguen siendo senior, midsenior y asistente).
+- Dentro del Hub, el menú lateral muestra el logo y el nombre del estudio que contrata, no los de DOMino. Si todavía no se cargó el logo, se ve el de DOMino.

@@ -74,8 +74,8 @@
                     <h1 id="hub-saludo">Hub de gestión</h1>
                     <p class="hub-sub" id="hub-sub">Todo el estudio en un solo lugar: elegí una herramienta y entrás en un toque.</p>
                 </header>
-                <section class="hub-buscar" id="hub-buscar" aria-label="Buscar empresa">
-                    <label for="hub-q">Ir directo a una empresa</label>
+                <section class="hub-buscar" id="hub-buscar" aria-label="Buscar cliente">
+                    <label for="hub-q">Ir directo a un cliente</label>
                     <input type="search" id="hub-q" placeholder="Escribí el nombre o el CUIT" autocomplete="off">
                     <div class="hub-q-res" id="hub-q-res" aria-live="polite"></div>
                 </section>
@@ -94,9 +94,9 @@
                     <div class="topbar-right">
                         <button class="btn-secundario" onclick="navegarA('expedientes')">← Clientes</button>
                         <select id="selector-empresas-contador" class="mini-selector" aria-label="Filtrar clientes">
-                            <option value="todas">Todas las empresas</option>
-                            <option value="activo" selected>Solo activas</option>
-                            <option value="inactivo">Solo inactivas</option>
+                            <option value="todas">Todos los clientes</option>
+                            <option value="activo" selected>Solo activos</option>
+                            <option value="inactivo">Solo inactivos</option>
                         </select>
                         <button class="btn-primary" id="btn-nuevo-cliente">+ Nuevo Cliente</button>
                     </div>
@@ -108,8 +108,8 @@
                         <h3>Registrar Nuevo Cliente</h3>
                         <form id="form-alta-cliente">
                             <div class="form-group">
-                                <label>Nombre de la Empresa Cliente</label>
-                                <input type="text" id="client-name" required placeholder="Ej. Empresa Alfa S.A.">
+                                <label>Nombre del cliente (persona o empresa)</label>
+                                <input type="text" id="client-name" required placeholder="Ej. Juan Pérez o Alfa S.A.">
                             </div>
                             <div class="form-group">
                                 <label>CUIT / Identificador</label>
@@ -138,8 +138,8 @@
                         <button class="btn-secundario" onclick="navegarA('hub')">← Inicio</button>
                     </div>
                 </header>
-                <p class="hub-sub" id="expedientes-ayuda">Elegí la empresa para ver sus procesos y documentos.</p>
-                <input type="search" id="buscar-expediente" class="buscador" placeholder="Buscar por nombre o CUIT" aria-label="Buscar empresa">
+                <p class="hub-sub" id="expedientes-ayuda">Elegí el cliente para ver sus procesos y documentos.</p>
+                <input type="search" id="buscar-expediente" class="buscador" placeholder="Buscar por nombre o CUIT" aria-label="Buscar cliente">
                 <div class="exp-grid" id="lista-expedientes"></div>
             </div>
 
@@ -391,10 +391,10 @@
     <div class="modal-content" style="width: 95%; max-width: 720px;">
         <span class="close-modal" id="close-modal-accesos">&times;</span>
         <h3 id="titulo-accesos">Accesos al portal</h3>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Quiénes de esta empresa entran al portal y qué puede hacer cada uno. El titular (el correo de la ficha) siempre tiene todos los permisos.</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 5px;">Quiénes entran al portal en nombre de este cliente y qué puede hacer cada uno. El titular (el correo de la ficha) siempre tiene todos los permisos.</p>
         <div id="lista-accesos" style="margin-top: 16px;"></div>
         <form id="form-acceso" class="eq-alta" style="margin-top: 18px;">
-            <h3>Agregar una persona de la empresa</h3>
+            <h3>Agregar otra persona del cliente</h3>
             <div class="eq-alta-campos">
                 <label>Nombre<input id="acc-nombre" required autocomplete="off" placeholder="Nombre y apellido"></label>
                 <label>Correo<input id="acc-email" type="email" required autocomplete="off" placeholder="correo@ejemplo.com"></label>

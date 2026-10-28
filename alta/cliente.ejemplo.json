@@ -1,6 +1,6 @@
 {
-  "nombre": "Veterinaria Ejemplo",
-  "rubro": "veterinaria",
+  "nombre": "Estudio Ejemplo",
+  "rubro": "contador",
   "logo": "logo.png",
   "firebase": {
     "apiKey": "PEGAR",

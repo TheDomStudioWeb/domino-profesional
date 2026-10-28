@@ -3,7 +3,7 @@
 // El perfil decide qué grupos y herramientas muestra el Hub, cómo se llaman las cosas y qué módulos opcionales trae.
 // OJO: el rubro ordena lo que se ve; NO da ni quita permisos (eso lo controlan los roles y las reglas de Firestore).
 (function () {
-  const RUBRO = 'veterinaria';
+  const RUBRO = 'contador';
   // Marca del negocio que contrata DOMino. En el Hub se muestra SU logo (imagenes/logo-cliente.png) y su nombre, no los de DOMino.
   // Si el archivo del logo no existe, se ve el de DOMino. Lo completa alta/preparar-cliente.js.
   const CLIENTE = { nombre: '', logo: 'imagenes/logo-cliente.png' };
@@ -20,44 +20,18 @@
     contador: {
       nombre: 'Contador', modulos: {}, ocultar: [], orden: [], etiquetas: {}, textos: {}
     },
-    // Veterinaria: dueños y mascotas, agenda de turnos, libreta sanitaria. Sin portal de documentos ni herramientas fiscales.
-    veterinaria: {
-      nombre: 'Veterinaria',
-      modulos: { turnos: true },
-      ocultar: ['portal', 'pendientes', 'cuit', 'iva'],
-      orden: ['Agenda y turnos', 'Gestión del estudio', 'Plazos y equipo', 'Documentos', 'Herramientas'],
-      etiquetas: {
-        expedientes: { t: 'Dueños y mascotas', d: 'Fichas de dueños, mascotas, libretas sanitarias y turnos. Desde acá también se da de alta o baja a un dueño.' },
-        kanban: { t: 'Seguimientos', d: 'Todos los seguimientos y tareas, por estado.' },
-        tareas: { t: 'Mis seguimientos', d: 'Lo que tenés asignado, por estado.' },
-        buzon: { t: 'Documentos del dueño', d: 'Cargar certificados, estudios y recetas, o enviarlos al dueño.' },
-        calendario: { t: 'Calendario', d: 'Vencimientos y controles del mes, día por día.' }
-      },
-      textos: {
-        gestion: 'Gestión de la veterinaria', clientes: 'Dueños y mascotas', cartera_activos: 'Dueños activos', cartera_inactivos: 'Dueños inactivos',
-        expedientes: 'Dueños y mascotas', ayuda_expediente: 'Elegí el dueño para ver sus mascotas, turnos y seguimientos.', procesos: 'Seguimientos activos',
-        hub_sub: 'Todo lo de la veterinaria en un solo lugar: elegí una herramienta y entrás en un toque.',
-        rol_senior: 'Dirección', rol_midsenior: 'Veterinario/a', rol_asistente: 'Recepción',
-        kpi_listos: 'Seguimientos listos', ver_ficha: 'Ver ficha', kpi_finalizadas: 'Finalizados', id_label: 'DNI', empresa: 'Dueño', proceso: 'seguimiento abierto', procesos_n: 'seguimientos abiertos',
-        herr_titulo: 'Herramientas', equipo_titulo: 'Equipo de la veterinaria',
-        buscar_ayuda_buzon: 'Elegí el dueño para cargar documentos recibidos o enviarle documentación.'
-      },
-      // Textos fijos de la pantalla (selector → texto / placeholder). Solo cambia lo que se ve; no toca datos.
-      dom: [
-        ['#nav-kanban', 'Seguimientos'], ['#vista-kanban h1', 'Seguimientos'], ['label[for=hub-q]', 'Ir directo a un dueño o mascota'],
-        ['#hub-q', null, 'Escribí el nombre del dueño o de la mascota'], ['#hub-buscar', null, null, 'Buscar dueño o mascota'],
-        ['#buscar-expediente', null, 'Buscar por nombre, mascota o documento', 'Buscar dueño'],
-        ['#selector-empresas-contador option[value=todas]', 'Todos los dueños'],
-        ['#modal-cliente h3', 'Registrar nuevo dueño'], ['#modal-cliente .form-group:nth-child(1) label', 'Nombre del dueño'], ['#client-name', null, 'Ej. Juan Pérez'],
-        ['#modal-cliente .form-group:nth-child(2) label', 'DNI / Identificador'], ['#client-cuit', null, 'Ej. 30123456'],
-        ['#modal-cliente .form-group:nth-child(3) label', 'Correo del dueño (si va a usar el portal)'], ['#modal-cliente .btn-submit', 'Guardar dueño'],
-        ['.client-board h2', 'Cartera de dueños'], ['#btn-admin-cartera', 'Administrar dueños'],
-        ['#persona-nivel option[value=asistente]', 'Recepción'], ['#persona-nivel option[value=midsenior]', 'Veterinario/a'], ['#persona-nivel option[value=senior]', 'Dirección']
-      ]
+    // Arquitectura: mismo funcionamiento que el estudio contable, pero el cliente se llama «comitente».
+    // Las veterinarias usan DOMino Veterinaria y los gimnasios DOMino Bienestar (repositorios aparte).
+    arquitecto: {
+      nombre: 'Arquitecto',
+      modulos: {}, ocultar: ['cuit', 'iva'], orden: [], etiquetas: {},
+      textos: { clientes: 'Comitentes', empresa: 'Comitente', desconocido: 'Comitente sin ficha', cartera_activos: 'Comitentes activos', cartera_inactivos: 'Comitentes inactivos', expedientes: 'Comitentes', ayuda_expediente: 'Elegí el comitente para ver sus procesos y documentos.', buscar_ayuda_buzon: 'Elegí el comitente para cargar documentos recibidos o enviarle documentación.', kpi_listos: 'Procesos listos' },
+      // Cambia la palabra en toda la pantalla, también en lo que aparece después (listas, avisos, ventanas).
+      reemplazos: [['clientes', 'comitentes'], ['cliente', 'comitente']]
     }
   };
 
-  // Vista previa de otro rubro sin tocar la copia: ?rubro=contador (solo cambia lo que se ve en ese navegador).
+  // Vista previa de otro rubro sin tocar la copia: ?rubro=arquitecto (solo cambia lo que se ve en ese navegador).
   let elegido = RUBRO;
   try { const q = new URLSearchParams(location.search).get('rubro'); if (q && PERFILES[q]) elegido = q; } catch (e) {}
   const P = PERFILES[elegido];
@@ -73,6 +47,27 @@
     });
     document.querySelectorAll('h1').forEach((h) => { if (P.textos && P.textos.herr_titulo && /^Herramientas del estudio$/i.test(h.textContent.trim())) h.textContent = P.textos.herr_titulo; if (P.textos && P.textos.equipo_titulo && /^Equipo del estudio$/i.test(h.textContent.trim())) h.textContent = P.textos.equipo_titulo; });
   };
+  // Reemplazo de palabras en toda la pantalla (por ejemplo cliente → comitente). Respeta mayúsculas.
+  if (P.reemplazos && P.reemplazos.length) {
+    const reglas = P.reemplazos.map(([de, a]) => [new RegExp('\\b' + de + '\\b', 'gi'), a]);
+    const cambiar = (t) => reglas.reduce((x, [re, a]) => x.replace(re, (m) => m[0] === m[0].toUpperCase() ? (m === m.toUpperCase() && m.length > 1 ? a.toUpperCase() : a[0].toUpperCase() + a.slice(1)) : a), t);
+    const ATR = ['placeholder', 'aria-label', 'title'];
+    const recorrer = (raiz) => {
+      if (!raiz) return;
+      if (raiz.nodeType === 3) { const n = cambiar(raiz.nodeValue); if (n !== raiz.nodeValue) raiz.nodeValue = n; return; }
+      if (raiz.nodeType !== 1 || /^(SCRIPT|STYLE|TEXTAREA|INPUT)$/.test(raiz.nodeName) && raiz.nodeName !== 'INPUT') return;
+      ATR.forEach((k) => { const v = raiz.getAttribute && raiz.getAttribute(k); if (v) { const n = cambiar(v); if (n !== v) raiz.setAttribute(k, n); } });
+      if (raiz.nodeName === 'INPUT') return;
+      raiz.childNodes.forEach(recorrer);
+    };
+    const iniciar = () => {
+      recorrer(document.body); document.title = cambiar(document.title);
+      new MutationObserver((ms) => ms.forEach((m) => { if (m.type === 'characterData') recorrer(m.target); else m.addedNodes.forEach(recorrer); })).observe(document.body, { childList: true, subtree: true, characterData: true });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+    const alerta = window.alert.bind(window), confirma = window.confirm.bind(window);
+    window.alert = (m) => alerta(cambiar(String(m))); window.confirm = (m) => confirma(cambiar(String(m)));
+  }
   window.DOMINO_CLIENTE = CLIENTE;
   // Logo y nombre del negocio en el menú lateral y en el portal; sin logo cargado queda la marca DOMino.
   const aplicarMarca = () => {
