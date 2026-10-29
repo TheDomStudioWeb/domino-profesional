@@ -1,4 +1,4 @@
-const CACHE_NAME = 'domino-profesional-v3'; // único por app: las tres apps comparten el mismo dominio
+const CACHE_NAME = 'domino-profesional-v4'; // único por app: las tres apps comparten el mismo dominio
 const urlsToCache = [
     './',
     'index.html',
@@ -33,7 +33,7 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
     if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
     event.respondWith(
-        fetch(event.request)
+        fetch(event.request, { cache: 'no-cache' })
             .then((resp) => {
                 const copia = resp.clone();
                 caches.open(CACHE_NAME).then((c) => c.put(event.request, copia));
