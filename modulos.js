@@ -9,7 +9,7 @@
   const CLIENTE = { nombre: '', logo: 'imagenes/logo-cliente.png' };
   // Gestión de documentos (guardar y enviar archivos). Necesita Firebase Storage activo en el proyecto del cliente.
   // Mientras esté en false, el Hub muestra «Próximamente» y no deja cargar documentos. Pasar a true cuando Storage esté listo y probado.
-  const DOCUMENTOS = false;
+  const DOCUMENTOS = !!(window.DOMINO_DEMO && window.DOMINO_DEMO.activa); // en la demostración se muestra el módulo de documentos
 
   // ── Palabras del vínculo con la persona atendida (cliente, comitente, paciente…) ──
   const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
