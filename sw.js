@@ -1,4 +1,4 @@
-const CACHE_NAME = 'domino-profesional-v5'; // único por app: las tres apps comparten el mismo dominio
+const CACHE_NAME = 'domino-profesional-v6'; // único por app: las tres apps comparten el mismo dominio
 const urlsToCache = [
     './',
     'index.html',
